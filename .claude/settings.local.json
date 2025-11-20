@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php:*)",
+      "Bash(vendor/bin/pint:*)",
+      "mcp__laravel-boost__search-docs",
+      "Bash(composer show:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.laravel-excel.com)",
+      "Bash(nul)",
+      "mcp__laravel-boost__application-info"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "laravel-boost"
+  ]
+}
