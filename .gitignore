@@ -27,10 +27,9 @@ Homestead.json
 .env.backup
 .env.production
 .phpactor.json
+.mcp.json
 auth.json
-
-.claude/
-/CLAUDE.md
-/.mcp.json
-nul
 boost.json
+CLAUDE.md
+.claude/
+nul
