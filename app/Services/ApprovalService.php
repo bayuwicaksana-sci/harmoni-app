@@ -144,6 +144,8 @@ class ApprovalService
             ->where('action', ApprovalAction::Pending)
             ->count();
 
+        Log::info("\n\n\n Pending Count : " . $pendingCount . "\n\n");
+
         if ($pendingCount === 0) {
             // All approved
             $request->update(['status' => DPRStatus::Approved]);

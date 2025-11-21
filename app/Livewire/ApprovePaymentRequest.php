@@ -6,6 +6,7 @@ use App\Enums\ApprovalAction;
 use App\Enums\DPRStatus;
 use App\Models\ApprovalHistory;
 use App\Models\DailyPaymentRequest;
+use App\Services\ApprovalService;
 use App\Services\DPRNotificationService;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -120,7 +121,7 @@ class ApprovePaymentRequest extends Component
         $this->errorMessage = null;
 
         try {
-            DB::beginTransaction();
+            // DB::beginTransaction();
 
             // Validate approval is still pending
             $this->approvalHistory->refresh();
@@ -128,32 +129,34 @@ class ApprovePaymentRequest extends Component
             if ($this->approvalHistory->action !== ApprovalAction::Pending) {
                 throw new \Exception('Approval sudah diproses sebelumnya.');
             }
+            $approvalService = app(ApprovalService::class);
+            $approvalService->approve($this->approvalHistory, $this->notes ?: null);
 
             // Update approval history
-            $this->approvalHistory->action = ApprovalAction::Approved;
-            $this->approvalHistory->notes = $this->notes ?: null;
-            $this->approvalHistory->approved_at = now();
-            $this->approvalHistory->save();
+            // $this->approvalHistory->action = ApprovalAction::Approved;
+            // $this->approvalHistory->notes = $this->notes ?: null;
+            // $this->approvalHistory->approved_at = now();
+            // $this->approvalHistory->save();
 
             // Check if all approvals are complete
-            $allApproved = $this->request->approvalHistories()
-                ->where('action', ApprovalAction::Pending)
-                ->count() === 0;
+            // $allApproved = $this->request->approvalHistories()
+            //     ->where('action', ApprovalAction::Pending)
+            //     ->count() === 0;
 
-            if ($allApproved) {
-                // All approvals complete - mark request as approved
-                $this->request->status = DPRStatus::Approved;
-                $this->request->save();
-            }
+            // if ($allApproved) {
+            //     // All approvals complete - mark request as approved
+            //     $this->request->status = DPRStatus::Approved;
+            //     $this->request->save();
+            // }
 
-            DB::commit();
+            // DB::commit();
 
-            // Send notifications
-            $notificationService = app(DPRNotificationService::class);
-            $notificationService->sendApprovalActionNotification(
-                $this->request->fresh(),
-                $this->approvalHistory->fresh()
-            );
+            // // Send notifications
+            // $notificationService = app(DPRNotificationService::class);
+            // $notificationService->sendApprovalActionNotification(
+            //     $this->request->fresh(),
+            //     $this->approvalHistory->fresh()
+            // );
 
             // Update UI state
             $this->actionCompleted = true;

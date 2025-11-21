@@ -156,7 +156,7 @@
                             <span class="item-value">{{ $this->formatCurrency($item->total_amount) }}</span>
                         </div>
 
-                        @if ($item->is_taxed && !is_null($this->tax_id) && !is_null($this->tax_method))
+                        @if ($item->is_taxed && !is_null($item->tax_id) && !is_null($item->tax_method))
                             <div class="item-row">
                                 <span class="item-label">Pajak</span>
                                 <span class="item-value">{{ $item->tax->name }} (Ditanggung oleh:

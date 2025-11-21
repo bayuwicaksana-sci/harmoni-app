@@ -174,9 +174,9 @@ class RequestItem extends Model implements HasMedia
                 $netAmount = 0;
 
                 if ($this->tax_method === TaxMethod::ToSCI) {
-                    $netAmount += $this->total_amount - ($this->total_amount * $this->tax->value);
-                } else {
                     $netAmount += $this->total_amount + ($this->total_amount * $this->tax->value);
+                } else {
+                    $netAmount += $this->total_amount - ($this->total_amount * $this->tax->value);
                 }
 
 
