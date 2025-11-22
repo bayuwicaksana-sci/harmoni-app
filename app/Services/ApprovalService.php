@@ -100,7 +100,7 @@ class ApprovalService
                 // $paymentRequest->update(['status' => 'pending']);
                 // Validate: Must have at least 1 approver
                 if ($approvalHistories->isEmpty()) {
-                    throw new \Exception(
+                    throw new Exception(
                         "Cannot submit request: No valid approvers found. " .
                             "This request would either result in self-approval or has no eligible approvers in the system. " .
                             "Please contact the administrator."

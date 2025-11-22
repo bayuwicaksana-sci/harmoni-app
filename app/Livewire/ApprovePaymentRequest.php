@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use Exception;
 use App\Enums\ApprovalAction;
 use App\Enums\DPRStatus;
 use App\Models\ApprovalHistory;
@@ -127,7 +128,7 @@ class ApprovePaymentRequest extends Component
             $this->approvalHistory->refresh();
 
             if ($this->approvalHistory->action !== ApprovalAction::Pending) {
-                throw new \Exception('Approval sudah diproses sebelumnya.');
+                throw new Exception('Approval sudah diproses sebelumnya.');
             }
             $approvalService = app(ApprovalService::class);
             $approvalService->approve($this->approvalHistory, $this->notes ?: null);
@@ -162,7 +163,7 @@ class ApprovePaymentRequest extends Component
             $this->actionCompleted = true;
             $this->actionResult = ApprovalAction::Approved->value;
             $this->showApproveConfirm = false;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
             $this->errorMessage = 'Terjadi kesalahan: ' . $e->getMessage();
             $this->showApproveConfirm = false;
@@ -188,7 +189,7 @@ class ApprovePaymentRequest extends Component
             $this->approvalHistory->refresh();
 
             if ($this->approvalHistory->action !== ApprovalAction::Pending) {
-                throw new \Exception('Approval sudah diproses sebelumnya.');
+                throw new Exception('Approval sudah diproses sebelumnya.');
             }
 
             // Update approval history
@@ -214,7 +215,7 @@ class ApprovePaymentRequest extends Component
             $this->actionCompleted = true;
             $this->actionResult = ApprovalAction::Rejected->value;
             $this->showRejectConfirm = false;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
             $this->errorMessage = 'Terjadi kesalahan: ' . $e->getMessage();
             $this->showRejectConfirm = false;

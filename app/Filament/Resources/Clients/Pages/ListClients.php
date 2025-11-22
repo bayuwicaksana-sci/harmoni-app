@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Clients\Pages;
 
+use Throwable;
 use App\Enums\COAType;
 use App\Exports\ClientWizardTemplateExport;
 use App\Filament\Resources\Clients\ClientResource;
@@ -1079,7 +1080,7 @@ class ListClients extends ListRecords
                                             ->success()
                                             ->send();
                                     });
-                                } catch (\Throwable $th) {
+                                } catch (Throwable $th) {
                                     Log::error("\n\n\n" . $th->getMessage() . "\n\n\n");
                                     Notification::make('client-created')
                                         ->title('Klien Gagal Didaftarkan!')

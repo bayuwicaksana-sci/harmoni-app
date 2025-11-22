@@ -24,8 +24,8 @@ class SettlementResource extends Resource
     protected static ?string $modelLabel = 'Settlement';
     protected static ?string $pluralModelLabel = 'Settlements';
     protected static ?string $navigationLabel = 'Settlement';
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
-    protected static string | UnitEnum | null $navigationGroup = 'Transactions';
+    protected static string | \BackedEnum | null $navigationIcon = Heroicon::OutlinedBanknotes;
+    protected static string | \UnitEnum | null $navigationGroup = 'Transactions';
     protected static ?string $slug = 'settlements';
 
     public static function form(Schema $schema): Schema
@@ -49,7 +49,7 @@ class SettlementResource extends Resource
     {
         return [
             'index' => ListSettlements::route('/'),
-            // 'create' => CreateSettlement::route('/create'),
+            'create' => CreateSettlement::route('/create'),
             'edit' => EditSettlement::route('/{record}/edit'),
         ];
     }

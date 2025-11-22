@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Exception;
 use App\Enums\ApprovalAction;
 use App\Mail\ApprovalRequestMail;
 use App\Mail\ApprovalStepCompletedMail;
@@ -46,7 +47,7 @@ class DPRNotificationService
 
             // 2. Send notification to first approver
             $this->notifyNextApprover($request);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to send request submitted notification', [
                 'request_id' => $request->id,
                 'error' => $e->getMessage(),
@@ -97,7 +98,7 @@ class DPRNotificationService
                 'approver' => $approver->user->email,
                 'sequence' => $currentSequence,
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to send approval request notification', [
                 'request_id' => $request->id,
                 'error' => $e->getMessage(),
@@ -134,7 +135,7 @@ class DPRNotificationService
                 // Intermediate approval - notify requester and next approver
                 $this->sendIntermediateApprovalNotification($request, $approver, $action);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to send approval action notification', [
                 'request_id' => $request->id,
                 'approval_history_id' => $approvalHistory->id,
@@ -201,7 +202,7 @@ class DPRNotificationService
 
             // Optional: Notify finance team
             // $this->notifyFinanceTeam($request);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to send final approval notification', [
                 'request_id' => $request->id,
                 'error' => $e->getMessage(),
@@ -224,7 +225,7 @@ class DPRNotificationService
                 'requester' => $request->requester->user->email,
                 'reason' => $reason,
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to send rejection notification', [
                 'request_id' => $request->id,
                 'error' => $e->getMessage(),
@@ -260,7 +261,7 @@ class DPRNotificationService
                 'finance_count' => 1,
                 // 'finance_count' => $financeEmployees->count(),
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to notify finance team', [
                 'request_id' => $request->id,
                 'error' => $e->getMessage(),
@@ -330,7 +331,7 @@ class DPRNotificationService
                 'approver' => $approver->user->email,
                 'days_pending' => $approvalHistory->created_at->diffInDays(now(tz: 'Asia/Jakarta')),
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to send approval reminder', [
                 'approval_history_id' => $approvalHistory->id,
                 'error' => $e->getMessage(),
@@ -358,7 +359,7 @@ class DPRNotificationService
                 'request_id' => $request->id,
                 'recipient_count' => $employees->count(),
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to send bulk notification', [
                 'request_id' => $request->id,
                 'error' => $e->getMessage(),

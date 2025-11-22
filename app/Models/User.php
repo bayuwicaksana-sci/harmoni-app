@@ -17,7 +17,7 @@ use Yebor974\Filament\RenewPassword\Traits\RenewPassword;
 
 class User extends Authenticatable implements FilamentUser, RenewPasswordContract
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable, RenewPassword;
 
 
