@@ -6,12 +6,12 @@ use App\Enums\ApprovalAction;
 use App\Enums\DPRStatus;
 use App\Enums\RequestItemStatus;
 use App\Enums\RequestPaymentType;
-use Exception;
-use Illuminate\Database\Eloquent\Collection;
 use App\Models\ApprovalHistory;
 use App\Models\ApprovalWorkflow;
 use App\Models\DailyPaymentRequest;
 use App\Models\Employee;
+use Exception;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -22,13 +22,13 @@ class ApprovalService
      */
     public function submitRequest(DailyPaymentRequest $paymentRequest): void
     {
-        Log::info("\n\n\n\nApproval Workflow Begin for : " . $paymentRequest->request_number . "\n\n");
+        Log::info("\n\n\n\nApproval Workflow Begin for : ".$paymentRequest->request_number."\n\n");
         DB::transaction(
             function () use ($paymentRequest) {
                 // Get active workflow
                 $workflow = ApprovalWorkflow::active()->first();
 
-                if (!$workflow) {
+                if (! $workflow) {
                     throw new Exception('No active approval workflow found');
                 }
 
@@ -46,11 +46,12 @@ class ApprovalService
                     // Get eligible approvers based on rule type
                     $approvers = $rule->getEligibleApprovers($paymentRequester);
 
-                    Log::info("Rule {$rule->sequence} ({$rule->approver_type->value}): Found " . $approvers->count() . " approver(s)");
+                    Log::info("Rule {$rule->sequence} ({$rule->approver_type->value}): Found ".$approvers->count().' approver(s)');
 
                     // Skip if no approvers found
                     if ($approvers->isEmpty()) {
                         Log::info("Skipping rule {$rule->sequence} - no eligible approvers found");
+
                         continue;
                     }
 
@@ -59,12 +60,13 @@ class ApprovalService
                     // 2. Duplicate approvers (same person already in the chain)
                     $validApprovers = $approvers->filter(function ($approver) use ($paymentRequester, $usedApproverIds) {
                         return $approver->id !== $paymentRequester->id
-                            && !$usedApproverIds->contains($approver->id);
+                            && ! $usedApproverIds->contains($approver->id);
                     });
 
                     // If no valid approvers after filtering, skip this rule
                     if ($validApprovers->isEmpty()) {
                         Log::info("Skipping rule {$rule->sequence} - would result in self-approval or duplicate approver");
+
                         continue;
                     }
 
@@ -101,15 +103,15 @@ class ApprovalService
                 // Validate: Must have at least 1 approver
                 if ($approvalHistories->isEmpty()) {
                     throw new Exception(
-                        "Cannot submit request: No valid approvers found. " .
-                            "This request would either result in self-approval or has no eligible approvers in the system. " .
-                            "Please contact the administrator."
+                        'Cannot submit request: No valid approvers found. '.
+                            'This request would either result in self-approval or has no eligible approvers in the system. '.
+                            'Please contact the administrator.'
                     );
                 }
 
                 // Insert all approval histories
                 ApprovalHistory::insert($approvalHistories->toArray());
-                Log::info("\n\nApproval Workflow Ended for : " . $paymentRequest->request_number . "\n\n\n\n");
+                Log::info("\n\nApproval Workflow Ended for : ".$paymentRequest->request_number."\n\n\n\n");
 
                 // TODO: Send notifications to approvers
                 $notificationService = app(DPRNotificationService::class);
@@ -144,12 +146,13 @@ class ApprovalService
             ->where('action', ApprovalAction::Pending)
             ->count();
 
-        Log::info("\n\n\n Pending Count : " . $pendingCount . "\n\n");
+        Log::info("\n\n\n Pending Count : ".$pendingCount."\n\n");
 
         if ($pendingCount === 0) {
             // All approved
             $request->update(['status' => DPRStatus::Approved]);
-            $request->requestItems()->wherePaymentType(RequestPaymentType::Reimburse)->update(['status' => RequestItemStatus::Paid]);
+            $request->requestItems()->wherePaymentType(RequestPaymentType::Reimburse)->update(['status' => RequestItemStatus::Closed]);
+            $request->requestItems()->wherePaymentType(RequestPaymentType::Offset)->update(['status' => RequestItemStatus::Closed]);
             $request->requestItems()->wherePaymentType(RequestPaymentType::Advance)->update(['status' => RequestItemStatus::WaitingSettlement]);
         }
 
@@ -175,7 +178,8 @@ class ApprovalService
 
         // Update request status to rejected
         $request = $approval->dailyPaymentRequest;
-        $request->update(['status' => ApprovalAction::Rejected]);
+        $request->update(['status' => DPRStatus::Rejected]);
+        $request->requestItems()->update(['status' => RequestItemStatus::Rejected]);
 
         // TODO: Notify requester
         $notificationService = app(DPRNotificationService::class);

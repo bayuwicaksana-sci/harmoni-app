@@ -12,13 +12,10 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
-
-use function PHPUnit\Framework\isNull;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class RequestItem extends Model implements HasMedia
 {
@@ -29,17 +26,23 @@ class RequestItem extends Model implements HasMedia
         'coa_id',
         'program_activity_id',
         'program_activity_item_id',
+        'settling_for',
+        'settlement_id',
+        'settlement_receipt_id',
         'payment_type',
         'advance_percentage',
         'quantity',
         'unit_quantity',
         'amount_per_item',
+        'act_quantity',
+        'act_amount_per_item',
         'request_item_type_id',
         'tax_method',
         // 'amount',
         // 'tax_amount',
         // 'net_amount',
         'description',
+        'notes',
         // Snapshot fields
         'coa_code',
         'coa_name',
@@ -52,6 +55,7 @@ class RequestItem extends Model implements HasMedia
         'tax_type',
         'tax_rate',
         'item_type_name',
+        'realization_date',
         'settled_at',
         'self_account',
         'bank_name',
@@ -59,13 +63,16 @@ class RequestItem extends Model implements HasMedia
         'account_owner',
         'status',
         'tax_id',
-        'is_taxed'
+        'is_taxed',
+        'is_unplanned',
     ];
 
     protected $casts = [
         'advance_percentage' => 'decimal:2',
         'quantity' => 'decimal:2',
         'amount_per_item' => 'decimal:2',
+        'act_quantity' => 'decimal:2',
+        'act_amount_per_item' => 'decimal:2',
         // 'amount' => 'decimal:2',
         // 'tax_amount' => 'decimal:2',
         // 'net_amount' => 'decimal:2',
@@ -76,10 +83,12 @@ class RequestItem extends Model implements HasMedia
         'coa_type' => COAType::class,
         'self_account' => 'boolean',
         'status' => RequestItemStatus::class,
-        'is_taxed' => 'boolean'
+        'is_taxed' => 'boolean',
+        'is_unplanned' => 'boolean',
+        'realization_date' => 'date',
     ];
 
-    protected $appends = ['total_amount', 'tax_amount', 'net_amount'];
+    protected $appends = ['total_amount', 'total_act_amount', 'tax_amount', 'net_amount'];
 
     protected static function booted()
     {
@@ -87,13 +96,13 @@ class RequestItem extends Model implements HasMedia
             if (
                 $request->isDirty('is_taxed')
             ) {
-                if (!$request->is_taxed) {
+                if (! $request->is_taxed) {
                     $request->tax_id = null;
+                    $request->tax_method = null;
                 }
             }
         });
     }
-
 
     // ============================================
     // RELATIONSHIPS
@@ -107,6 +116,26 @@ class RequestItem extends Model implements HasMedia
     public function coa(): BelongsTo
     {
         return $this->belongsTo(COA::class);
+    }
+
+    public function settleParent(): BelongsTo
+    {
+        return $this->belongsTo(RequestItem::class, 'settling_for', 'id');
+    }
+
+    public function settleChilds(): HasMany
+    {
+        return $this->hasMany(RequestItem::class, 'settling_for', 'id');
+    }
+
+    public function settlement(): BelongsTo
+    {
+        return $this->belongsTo(Settlement::class);
+    }
+
+    public function settlementReceipt(): BelongsTo
+    {
+        return $this->belongsTo(SettlementReceipt::class);
     }
 
     public function requestItemType(): BelongsTo
@@ -148,16 +177,39 @@ class RequestItem extends Model implements HasMedia
         );
     }
 
+    protected function totalActAmount(): Attribute
+    {
+        return new Attribute(
+            get: function () {
+                // Handle null values
+                if (is_null($this->act_quantity) || is_null($this->act_amount_per_item)) {
+                    return 0;
+                }
+
+                return $this->act_quantity * $this->act_amount_per_item;
+            },
+        );
+    }
+
+    protected function variance(): Attribute
+    {
+        return new Attribute(
+            get: function () {
+                return ($this->payment_type === RequestPaymentType::Reimburse || $this->payment_type === RequestPaymentType::Offset) ? 0 : $this->total_amount - $this->total_act_amount;
+            }
+        );
+    }
+
     protected function taxAmount(): Attribute
     {
         return new Attribute(
             get: function () {
                 // Handle null values
-                if (!$this->is_taxed || is_null($this->tax_id)) {
+                if (! $this->is_taxed || is_null($this->tax_id)) {
                     return null;
                 }
 
-                return $this->total_amount * $this->tax->value;
+                return ($this->payment_type === RequestPaymentType::Advance ? $this->total_amount : $this->total_act_amount) * $this->tax->value;
             },
         );
     }
@@ -167,18 +219,25 @@ class RequestItem extends Model implements HasMedia
         return new Attribute(
             get: function () {
                 // Handle null values
-                if (!$this->is_taxed || is_null($this->tax_id) || is_null($this->tax_method)) {
+                if (! $this->is_taxed || is_null($this->tax_id) || is_null($this->tax_method)) {
                     return null;
                 }
 
                 $netAmount = 0;
 
                 if ($this->tax_method === TaxMethod::ToSCI) {
-                    $netAmount += $this->total_amount + ($this->total_amount * $this->tax->value);
+                    if ($this->payment_type === RequestPaymentType::Advance) {
+                        $netAmount += $this->total_amount + ($this->total_amount * $this->tax->value);
+                    } else {
+                        $netAmount += $this->total_act_amount + ($this->total_act_amount * $this->tax->value);
+                    }
                 } else {
-                    $netAmount += $this->total_amount - ($this->total_amount * $this->tax->value);
+                    if ($this->payment_type === RequestPaymentType::Advance) {
+                        $netAmount += $this->total_amount - ($this->total_amount * $this->tax->value);
+                    } else {
+                        $netAmount += $this->total_act_amount - ($this->total_act_amount * $this->tax->value);
+                    }
                 }
-
 
                 return $netAmount;
             },
@@ -252,7 +311,7 @@ class RequestItem extends Model implements HasMedia
     #[Scope]
     protected function paid(Builder $query): void
     {
-        $query->where('status', RequestItemStatus::Paid);
+        $query->where('status', RequestItemStatus::Closed);
     }
 
     #[Scope]
@@ -261,11 +320,11 @@ class RequestItem extends Model implements HasMedia
         $query->where('status', RequestItemStatus::WaitingSettlement);
     }
 
-    #[Scope]
-    protected function settled(Builder $query): void
-    {
-        $query->where('status', RequestItemStatus::Settled);
-    }
+    // #[Scope]
+    // protected function settled(Builder $query): void
+    // {
+    //     $query->where('status', RequestItemStatus::Settled);
+    // }
 
     // ============================================
     // HELPER METHODS
@@ -276,6 +335,7 @@ class RequestItem extends Model implements HasMedia
         if ($this->contract_year) {
             return "{$this->coa_name} ({$this->contract_year})";
         }
+
         return $this->coa_name ?? $this->coa_code ?? 'Unknown';
     }
 
@@ -287,5 +347,31 @@ class RequestItem extends Model implements HasMedia
     public function isReimbursement(): bool
     {
         return $this->payment_type === RequestPaymentType::Reimburse;
+    }
+
+    // ============================================
+    // MEDIA LIBRARY
+    // ============================================
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('request_item_image')
+            ->useDisk('local')  // Use local disk as per config
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+        // ->multipleFiles();  // Allow multiple images per item
+    }
+
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        $this->addMediaConversion('thumb')
+            ->width(300)
+            ->height(300)
+            ->sharpen(10)
+            ->performOnCollections('request_item_image');
+
+        $this->addMediaConversion('medium')
+            ->width(800)
+            ->height(600)
+            ->performOnCollections('request_item_image');
     }
 }

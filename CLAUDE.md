@@ -671,4 +671,9 @@ Fortify is a headless authentication backend that provides authentication routes
 
 -   Use latest code standards
 -   Use latest laravel features
+-   Always use context7 when I need code generation, setup or
+    configuration steps, or library/API documentation. This means
+    you should automatically use the Context7 MCP tools to resolve
+    library id and get library docs without me having to
+    explicitly ask.
     </laravel-boost-guidelines>

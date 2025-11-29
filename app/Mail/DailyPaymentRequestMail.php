@@ -2,15 +2,11 @@
 
 namespace App\Mail;
 
-use App\Enums\ApprovalAction;
 use App\Enums\RequestPaymentType;
 use App\Models\DailyPaymentRequest;
 use App\Models\Employee;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 abstract class DailyPaymentRequestMail extends Mailable
@@ -32,7 +28,7 @@ abstract class DailyPaymentRequestMail extends Mailable
      */
     protected function formatCurrency($amount): string
     {
-        return 'Rp ' . number_format($amount, 0, ',', '.');
+        return 'Rp '.number_format($amount, 0, ',', '.');
     }
 
     /**
@@ -45,10 +41,10 @@ abstract class DailyPaymentRequestMail extends Mailable
                 'coa' => $item->coa->name,
                 'description' => $item->description,
                 'paymentType' => $item->payment_type->getLabel(),
-                'quantity' => $item->quantity,
+                'quantity' => $item->payment_type === RequestPaymentType::Advance ? $item->quantity : $item->act_quantity,
                 'unitQuantity' => $item->unit_quantity,
-                'amountPerItem' => $this->formatCurrency($item->amount_per_item),
-                'subtotal' => $this->formatCurrency($item->total_amount),
+                'amountPerItem' => $item->payment_type === RequestPaymentType::Advance ? $this->formatCurrency($item->amount_per_item) : $this->formatCurrency($item->act_amount_per_item),
+                'subtotal' => $item->payment_type === RequestPaymentType::Advance ? $this->formatCurrency($item->total_amount) : $this->formatCurrency($item->total_act_amount),
                 'attachments' => $item->getMedia('request_item_attachments') ?? [],
                 'taxMethod' => $item->tax_method ?? null,
                 'taxType' => $item->tax_type ?? null,
@@ -72,8 +68,8 @@ abstract class DailyPaymentRequestMail extends Mailable
     {
         return $this->request->approvalHistories
             ->sortBy('sequence')
-            ->map(fn($history) => [
-                'approver' => $history->approver->user->name . ' (' . $history->approver->jobTitle->title . ')',
+            ->map(fn ($history) => [
+                'approver' => $history->approver->user->name.' ('.$history->approver->jobTitle->title.')',
                 'action' => $history->action->getLabel(),
                 'date' => $history->approved_at?->format('d M Y, H:i'),
                 'notes' => $history->notes,

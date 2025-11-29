@@ -9,49 +9,37 @@ use App\Exports\DPRTemplateExport;
 use App\Filament\Resources\DailyPaymentRequests\DailyPaymentRequestResource;
 use App\Filament\Resources\DailyPaymentRequests\Schemas\DailyPaymentRequestCreateForm2;
 use App\Imports\DPRTemplateImport;
+use App\Models\Coa;
+use App\Models\ProgramActivity;
 use App\Models\ProgramActivityItem;
 use App\Models\RequestItem;
 use App\Services\ApprovalService;
 use Filament\Actions\Action;
-use Filament\Actions\CreateAction;
-use Filament\Forms\Components\Field;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
-use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
-use Filament\Schemas\Components\Wizard\Step;
-use Filament\Schemas\Schema;
-use Filament\Support\Enums\Width;
-use Illuminate\Support\Facades\Auth;
-use Maatwebsite\Excel\Facades\Excel;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
-use App\Models\Coa;
-use App\Models\ProgramActivity;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
-use Filament\Forms\Components\Toggle;
-use Filament\Infolists\Components\ImageEntry;
-use Filament\Infolists\Components\SpatieMediaLibraryImageEntry;
 use Filament\Resources\Pages\CreateRecord\Concerns\HasWizard;
 use Filament\Schemas\Components\Flex;
-use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Support\Enums\Alignment;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Exceptions\Halt;
-use Filament\Support\RawJs;
+use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
 
 class CreateDailyPaymentRequest extends CreateRecord
 {
     use HasWizard;
+
     protected static string $resource = DailyPaymentRequestResource::class;
+
     protected ?array $requestItems;
 
     protected function getSteps(): array
@@ -63,25 +51,25 @@ class CreateDailyPaymentRequest extends CreateRecord
                     $items = [];
                     if ($get('requestItems') !== null) {
                         $items = array_filter($get('requestItems'), function ($item) {
-                            return !empty($item['coa_id']) && !empty($item['item']) && !empty($item['qty']) && !empty($item['unit_qty']) && !empty($item['base_price']);
+                            return ! empty($item['coa_id']) && ! empty($item['item']) && ! empty($item['qty']) && ! empty($item['unit_qty']) && ! empty($item['base_price']);
                         });
                     }
                     // dd($items);
                     if (empty($items)) {
                         Notification::make()
                             ->title('Formulir masih kosong')
-                            ->body("Pastikan setidaknya ada 1 item request")
+                            ->body('Pastikan setidaknya ada 1 item request')
                             ->danger()
                             ->persistent()
                             ->send();
-                        throw new Halt();
+                        throw new Halt;
                     }
                 }),
             Step::make('Review')
                 ->schema([
                     TextEntry::make('reviewTotalRequestAmount')
                         ->label('Total Nominal Request')
-                        ->state(fn(Get $get) => (float) str_replace(['.', ','], ['', '.'], $get('total_request_amount')))
+                        ->state(fn (Get $get) => (float) str_replace(['.', ','], ['', '.'], $get('total_request_amount')))
                         ->money(currency: 'IDR', locale: 'id')
                         ->size(TextSize::Large)
                         ->weight(FontWeight::ExtraBold),
@@ -93,7 +81,7 @@ class CreateDailyPaymentRequest extends CreateRecord
                                         ->hiddenLabel()
                                         ->state(function (Get $get) {
                                             $filteredRequestItems = collect(array_filter($get('requestItems'), function ($item) {
-                                                return !empty($item['coa_id']) && !empty($item['item']) && !empty($item['qty']) && !empty($item['unit_qty']) && !empty($item['base_price']);
+                                                return ! empty($item['coa_id']) && ! empty($item['item']) && ! empty($item['qty']) && ! empty($item['unit_qty']) && ! empty($item['base_price']);
                                             }))->groupBy('coa_id')
                                                 ->map(function ($items, $coa_id) {
                                                     return [
@@ -104,7 +92,7 @@ class CreateDailyPaymentRequest extends CreateRecord
                                                         }),
                                                         'requestedItems' => $items->map(function ($item) {
                                                             return collect($item)->except('coa_id')->toArray();
-                                                        })->values()->toArray()
+                                                        })->values()->toArray(),
                                                     ];
                                                 })
                                                 ->values()
@@ -121,7 +109,7 @@ class CreateDailyPaymentRequest extends CreateRecord
                                                     ->money(currency: 'IDR', locale: 'id')
                                                     ->size(TextSize::Large)
                                                     ->weight(FontWeight::ExtraBold)
-                                                    ->grow(false)
+                                                    ->grow(false),
                                             ]),
                                             RepeatableEntry::make('requestedItems')
                                                 ->hiddenLabel()
@@ -140,7 +128,7 @@ class CreateDailyPaymentRequest extends CreateRecord
                                                 ->schema([
                                                     TextEntry::make('program_activity_id')
                                                         ->label('Aktivitas')
-                                                        ->formatStateUsing(fn($state) => ProgramActivity::find($state)->name)
+                                                        ->formatStateUsing(fn ($state) => ProgramActivity::find($state)->name)
                                                         ->placeholder('N/A'),
                                                     TextEntry::make('item')
                                                         ->label('Deskripsi Item'),
@@ -149,10 +137,10 @@ class CreateDailyPaymentRequest extends CreateRecord
                                                     TextEntry::make('unit_qty')
                                                         ->label('Unit Qty'),
                                                     TextEntry::make('base_price')
-                                                        ->formatStateUsing(fn($state) => 'Rp ' . $state)
+                                                        ->formatStateUsing(fn ($state) => 'Rp '.$state)
                                                         ->label('Harga/item'),
                                                     TextEntry::make('total_price')
-                                                        ->formatStateUsing(fn($state) => 'Rp ' . $state)
+                                                        ->formatStateUsing(fn ($state) => 'Rp '.$state)
                                                         ->label('Total Harga'),
                                                     TextEntry::make('bank_name')
                                                         ->label('Nama Bank Tujuan'),
@@ -162,7 +150,7 @@ class CreateDailyPaymentRequest extends CreateRecord
                                                         ->label('Nama Pemilik Rekening'),
                                                 ])
                                                 ->extraAttributes([
-                                                    'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]'
+                                                    'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
                                                 ]),
                                         ]),
                                 ]),
@@ -172,17 +160,18 @@ class CreateDailyPaymentRequest extends CreateRecord
                                         ->hiddenLabel()
                                         ->state(function (Get $get) {
                                             $filteredRequestItems = collect(array_filter($get('requestItems'), function ($item) {
-                                                return !empty($item['coa_id']) && !empty($item['item']) && !empty($item['qty']) && !empty($item['unit_qty']) && !empty($item['base_price']);
+                                                return ! empty($item['coa_id']) && ! empty($item['item']) && ! empty($item['qty']) && ! empty($item['unit_qty']) && ! empty($item['base_price']);
                                             }))->groupBy('bank_account')
                                                 ->map(function ($items, $bank_account) {
                                                     $firstItem = $items->first();
+
                                                     return [
                                                         'bank_account' => $bank_account,
                                                         'bank_name' => $firstItem['bank_name'],
                                                         'account_owner' => $firstItem['account_owner'],
                                                         'transfer_amount' => $items->sum(function ($item) {
                                                             return (float) str_replace(['.', ','], ['', '.'], $item['total_price']);
-                                                        })
+                                                        }),
                                                     ];
                                                 })
                                                 ->values()
@@ -205,9 +194,9 @@ class CreateDailyPaymentRequest extends CreateRecord
                                                 ->label('Nama Pemilik Rekening'),
                                             TextEntry::make('transfer_amount')
                                                 ->money(currency: 'IDR', locale: 'id')
-                                                ->label('Nominal Transfer')
-                                        ])
-                                ])
+                                                ->label('Nominal Transfer'),
+                                        ]),
+                                ]),
                         ]),
                 ]),
         ];
@@ -228,11 +217,11 @@ class CreateDailyPaymentRequest extends CreateRecord
                     $data = $livewire->data;
                     if (isset($data['requestItems'])) {
                         $data['requestItems'] = array_filter($data['requestItems'], function ($item) {
-                            return !empty($item['item']) || !empty($item['qty']) || !empty($item['unit_qty']) || !empty($item['base_price']);
+                            return ! empty($item['item']) || ! empty($item['qty']) || ! empty($item['unit_qty']) || ! empty($item['base_price']);
                         });
                     }
                     // dd($data);
-                    $fileName = 'template_payment_request_' . now()->format('YmdHis') . '.xlsx';
+                    $fileName = 'template_payment_request_'.now()->format('YmdHis').'.xlsx';
 
                     return Excel::download(
                         new DPRTemplateExport($data),
@@ -246,15 +235,18 @@ class CreateDailyPaymentRequest extends CreateRecord
                 ->schema([
                     FileUpload::make('file')
                         ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'])
+                        ->multiple(false)
                         ->required(),
                 ])
                 ->action(function (array $data, $livewire) {
                     // dd($data, $livewire);
-                    $file = storage_path('app/private/' . $data['file']);
-                    $import = new DPRTemplateImport();
-                    Excel::import($import, $file);
+                    $file = storage_path('app/private/'.$data['file']);
+                    $import = new DPRTemplateImport;
+                    $importedPaymentRequestData = Excel::toArray($import, $file);
 
-                    $livewire->data = $import->getImportedData();
+                    dd($importedPaymentRequestData);
+
+                    $livewire->data = $importedPaymentRequestData;
 
                     Notification::make()
                         ->success()
@@ -271,14 +263,14 @@ class CreateDailyPaymentRequest extends CreateRecord
 
         if (isset($data['requestItems'])) {
             $data['requestItems'] = array_filter($data['requestItems'], function ($item) {
-                return !empty($item['coa_id']) || !empty($item['program_activity_id']) || !empty($item['item']) || !empty($item['qty']) || !empty($item['unit_qty']) || !empty($item['base_price']);
+                return ! empty($item['coa_id']) || ! empty($item['program_activity_id']) || ! empty($item['item']) || ! empty($item['qty']) || ! empty($item['unit_qty']) || ! empty($item['base_price']);
             });
         }
 
         if (empty($data['requestItems'])) {
             Notification::make()
                 ->title('Gagal menyimpan draft')
-                ->body("Pastikan setidaknya ada 1 item request")
+                ->body('Pastikan setidaknya ada 1 item request')
                 ->danger()
                 ->persistent()
                 ->send();
@@ -288,7 +280,7 @@ class CreateDailyPaymentRequest extends CreateRecord
 
         $dataDpr = [
             'requester_id' => Auth::user()->employee?->id,
-            'status' => DPRStatus::Draft
+            'status' => DPRStatus::Draft,
         ];
 
         $record = static::getModel()::create($dataDpr);
@@ -300,14 +292,17 @@ class CreateDailyPaymentRequest extends CreateRecord
                 'program_activity_id' => $item['program_activity_id'] ?? null,
                 'program_activity_item_id' => $item['program_activity_id']
                     ? ProgramActivityItem::whereProgramActivityId($item['program_activity_id'])
-                    ->whereDescription($item['item'])
-                    ->value('id')
+                        ->whereDescription($item['item'])
+                        ->value('id')
                     : null,
-                'payment_type' => $item['payment_type'],
+                'payment_type' => RequestPaymentType::from($item['payment_type']),
                 'description' => $item['item'] ?? null,
-                'quantity' => ((float) $item['qty']) ?? null,
+                'notes' => $item['notes'] ?? null,
+                'quantity' => $item['payment_type'] === RequestPaymentType::Advance->value ? ((float) $item['qty']) ?? null : 0,
+                'act_quantity' => $item['payment_type'] === RequestPaymentType::Reimburse->value ? ((float) $item['qty']) ?? null : 0,
                 'unit_quantity' => $item['unit_qty'] ?? null,
-                'amount_per_item' => ((float) str_replace(['.', ','], ['', '.'], $item['base_price'])) ?? null,
+                'amount_per_item' => $item['payment_type'] === RequestPaymentType::Advance->value ? ((float) str_replace(['.', ','], ['', '.'], $item['base_price'])) ?? null : 0,
+                'act_amount_per_item' => $item['payment_type'] === RequestPaymentType::Reimburse->value ? ((float) str_replace(['.', ','], ['', '.'], $item['base_price'])) ?? null : 0,
                 'self_account' => $item['self_account'],
                 'bank_name' => $item['bank_name'] ?? null,
                 'bank_account' => ((string) $item['bank_account']) ?? null,
@@ -319,6 +314,12 @@ class CreateDailyPaymentRequest extends CreateRecord
             if (count($item['attachments']) > 0) {
                 foreach ($item['attachments'] as $index => $attachment) {
                     $createdRequestItem->addMedia($attachment)->toMediaCollection('request_item_attachments', 'local');
+                }
+            }
+
+            if (count($item['item_image']) > 0) {
+                foreach ($item['item_image'] as $index => $attachment) {
+                    $createdRequestItem->addMedia($attachment)->toMediaCollection('request_item_image', 'local');
                 }
             }
         }
@@ -333,16 +334,18 @@ class CreateDailyPaymentRequest extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+
+        // dd($data);
         if (isset($data['requestItems'])) {
             $data['requestItems'] = array_filter($data['requestItems'], function ($item) {
-                return !empty($item['coa_id']) && !empty($item['item']) && !empty($item['qty']) && !empty($item['unit_qty']) && !empty($item['base_price']);
+                return ! empty($item['coa_id']) && ! empty($item['item']) && ! empty($item['qty']) && ! empty($item['unit_qty']) && ! empty($item['base_price']);
             });
         }
 
         if (empty($data['requestItems'])) {
             Notification::make()
                 ->title('Gagal : Formulir Kosong!')
-                ->body("Pastikan setidaknya ada 1 item request")
+                ->body('Pastikan setidaknya ada 1 item request')
                 ->danger()
                 ->persistent()
                 ->send();
@@ -360,20 +363,23 @@ class CreateDailyPaymentRequest extends CreateRecord
                 'program_activity_id' => $item['program_activity_id'] ?? null,
                 'program_activity_item_id' => $item['program_activity_id']
                     ? ProgramActivityItem::whereProgramActivityId($item['program_activity_id'])
-                    ->whereDescription($item['item'])
-                    ->value('id')
+                        ->whereDescription($item['item'])
+                        ->value('id')
                     : null,
-                'payment_type' => $item['payment_type'],
+                'payment_type' => RequestPaymentType::from($item['payment_type']),
                 'description' => $item['item'] ?? null,
-                'quantity' => $item['qty'] ?? null,
+                'notes' => $item['notes'] ?? null,
+                'quantity' => $item['payment_type'] === RequestPaymentType::Advance->value ? $item['qty'] ?? null : 0,
+                'act_quantity' => $item['payment_type'] === RequestPaymentType::Reimburse->value ? $item['qty'] ?? null : 0,
                 'unit_quantity' => $item['unit_qty'] ?? null,
-                'amount_per_item' => $item['base_price'] ?? null,
+                'amount_per_item' => $item['payment_type'] === RequestPaymentType::Advance->value ? $item['base_price'] ?? null : 0,
+                'act_amount_per_item' => $item['payment_type'] === RequestPaymentType::Reimburse->value ? $item['base_price'] ?? null : 0,
                 'attachments' => $item['attachments'],
                 'self_account' => $item['self_account'],
                 'bank_name' => $item['bank_name'] ?? null,
                 'bank_account' => (string) $item['bank_account'] ?? null,
                 'account_owner' => $item['account_owner'] ?? null,
-                'status' => RequestItemStatus::WaitingPayment
+                'status' => RequestItemStatus::WaitingPayment,
             ];
 
             $this->requestItems[] = $itemData;
@@ -395,7 +401,8 @@ class CreateDailyPaymentRequest extends CreateRecord
     {
         foreach ($this->requestItems as $index => $item) {
             $itemAttachments = $item['attachments'] ?? [];
-            unset($item['attachments']);
+            $itemImage = $item['item_image'] ?? [];
+            unset($item['attachments'],$item['item_image']);
 
             $item['daily_payment_request_id'] = $this->record->id;
 
@@ -404,6 +411,11 @@ class CreateDailyPaymentRequest extends CreateRecord
             if (count($itemAttachments) > 0) {
                 foreach ($itemAttachments as $index => $attachment) {
                     $createdRequestItem->addMedia($attachment)->toMediaCollection('request_item_attachments', 'local');
+                }
+            }
+            if (count($itemImage) > 0) {
+                foreach ($itemImage as $index => $image) {
+                    $createdRequestItem->addMedia($image)->toMediaCollection('request_item_image', 'local');
                 }
             }
         }

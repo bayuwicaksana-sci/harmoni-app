@@ -2,11 +2,8 @@
 
 namespace App\Filament\Resources\Clients\Pages;
 
-use Throwable;
 use App\Enums\COAType;
-use App\Exports\ClientWizardTemplateExport;
 use App\Filament\Resources\Clients\ClientResource;
-use App\Imports\ClientWizardTemplateImport;
 use App\Imports\CreateClientDataImport;
 use App\Models\Client;
 use App\Models\ClientPic;
@@ -36,19 +33,18 @@ use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Support\RawJs;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
+use Throwable;
 
 class ListClients extends ListRecords
 {
@@ -242,7 +238,7 @@ class ListClients extends ListRecords
                                             // ->live(debounce: 700)
                                             ->options(function (Get $get) {
                                                 // Cache key based on programs + code
-                                                $cacheKey = md5(json_encode($get('../../programs')) . ($get('../../code') ?? ''));
+                                                $cacheKey = md5(json_encode($get('../../programs')).($get('../../code') ?? ''));
 
                                                 if (! isset(static::$programOptionsCache[$cacheKey])) {
                                                     $programs = $get('../../programs');
@@ -303,7 +299,7 @@ class ListClients extends ListRecords
                                             // ->required(fn(Get $get) => null !== $get('name'))
                                             ->options(function (Get $get) {
                                                 // Cache key based on activities + contract year
-                                                $cacheKey = md5(json_encode($get('../../program_activities')) . ($get('../../contract_year') ?? ''));
+                                                $cacheKey = md5(json_encode($get('../../program_activities')).($get('../../contract_year') ?? ''));
 
                                                 if (! isset(static::$activityOptionsCache[$cacheKey])) {
                                                     $activities = $get('../../program_activities');
@@ -363,17 +359,17 @@ class ListClients extends ListRecords
                                     ->schema([
                                         TextEntry::make('client_name')
                                             ->label('Nama Klien')
-                                            ->state(fn(Get $get) => $get('name') . ' (' . $get('code') . ')'),
+                                            ->state(fn (Get $get) => $get('name').' ('.$get('code').')'),
                                         TextEntry::make('contract_year_review')
                                             ->label('Tahun Kontrak')
-                                            ->state(fn(Get $get) => $get('contract_year')),
+                                            ->state(fn (Get $get) => $get('contract_year')),
                                         TextEntry::make('start_date_review')
                                             ->label('Awal Periode')
-                                            ->state(fn(Get $get) => $get('start_date'))
+                                            ->state(fn (Get $get) => $get('start_date'))
                                             ->date('j M Y'),
                                         TextEntry::make('end_date_review')
                                             ->label('Akhir Periode')
-                                            ->state(fn(Get $get) => $get('end_date'))
+                                            ->state(fn (Get $get) => $get('end_date'))
                                             ->date('j M Y'),
                                         TextEntry::make('total_contract_value')
                                             ->label('Nilai Kontrak')
@@ -425,7 +421,7 @@ class ListClients extends ListRecords
                                                     return 'Margin 0%';
                                                 }
 
-                                                return 'Margin ' . round(((((float) $state - (float) $totalPlannedValue) / (float) $state) * 100), 2) . '%';
+                                                return 'Margin '.round(((((float) $state - (float) $totalPlannedValue) / (float) $state) * 100), 2).'%';
                                             })
                                             ->money(currency: 'IDR', locale: 'id'),
                                         TextEntry::make('total_planned_value')
@@ -478,7 +474,7 @@ class ListClients extends ListRecords
                                                     return '0%';
                                                 }
 
-                                                return round((((float) $state / (float) $totalContractValue) * 100), 2) . '%';
+                                                return round((((float) $state / (float) $totalContractValue) * 100), 2).'%';
                                             })
                                             ->money(currency: 'IDR', locale: 'id'),
                                         RepeatableEntry::make('pics')
@@ -506,7 +502,7 @@ class ListClients extends ListRecords
                                     ->state(function (Get $get) {
                                         // Build indexes for O(1) lookup instead of nested loops
                                         $activitiesIndex = [];
-                                        foreach (array_filter($get('program_activities') ?? [], fn($a) => ! empty($a['name'])) as $activity) {
+                                        foreach (array_filter($get('program_activities') ?? [], fn ($a) => ! empty($a['name'])) as $activity) {
                                             $coaCode = implode('-', [(string) $get('contract_year'), $activity['program_code']]);
                                             $activityCode = implode('-', [$coaCode, Str::slug($activity['name'])]);
                                             $activitiesIndex[$activity['program_code']][] = [
@@ -516,7 +512,7 @@ class ListClients extends ListRecords
                                         }
 
                                         $itemsIndex = [];
-                                        foreach (array_filter($get('program_activity_items') ?? [], fn($i) => ! empty($i['description'])) as $item) {
+                                        foreach (array_filter($get('program_activity_items') ?? [], fn ($i) => ! empty($i['description'])) as $item) {
                                             // Parse budget values once and format for display
                                             $budgetValue = (float) str_replace(['.', ','], ['', '.'], $item['total_item_budget'] ?? 0);
                                             $plannedValue = (float) str_replace(['.', ','], ['', '.'], $item['total_item_planned_budget'] ?? 0);
@@ -529,14 +525,14 @@ class ListClients extends ListRecords
                                                 'total_item_budget' => $budgetValue,
                                                 'total_item_planned_budget' => $plannedValue,
                                                 // Pre-format currency for Blade view
-                                                'total_item_budget_formatted' => 'Rp ' . number_format($budgetValue, 2, ',', '.'),
-                                                'total_item_planned_budget_formatted' => 'Rp ' . number_format($plannedValue, 2, ',', '.'),
+                                                'total_item_budget_formatted' => 'Rp '.number_format($budgetValue, 2, ',', '.'),
+                                                'total_item_planned_budget_formatted' => 'Rp '.number_format($plannedValue, 2, ',', '.'),
                                             ];
                                         }
 
                                         // Single pass through programs - O(n) instead of O(n³)
                                         $results = [];
-                                        foreach (array_filter($get('programs') ?? [], fn($p) => ! empty($p['name'])) as $program) {
+                                        foreach (array_filter($get('programs') ?? [], fn ($p) => ! empty($p['name'])) as $program) {
                                             $programCode = implode('-', [$get('code'), str_replace(' ', '-', $program['name'])]);
                                             $program['code'] = $programCode;
                                             $program['program_activity_items_review'] = [];
@@ -574,7 +570,7 @@ class ListClients extends ListRecords
                                                         $categories = ProgramCategory::pluck('name', 'id');
                                                     }
 
-                                                    return '( ' . ($categories[$state] ?? '') . ' )';
+                                                    return '( '.($categories[$state] ?? '').' )';
                                                 }),
                                             TextEntry::make('contract_budget')
                                                 ->grow(false)
@@ -586,7 +582,7 @@ class ListClients extends ListRecords
                                                         return 'Margin 0%';
                                                     }
 
-                                                    return Schema::end((string) 'Margin ' . round(((((float) ($state) - (float) ($get('planned_budget'))) / (float) ($get('contract_budget'))) * 100), 2) . '%');
+                                                    return Schema::end((string) 'Margin '.round(((((float) ($state) - (float) ($get('planned_budget'))) / (float) ($get('contract_budget'))) * 100), 2).'%');
                                                 })
                                                 ->hiddenLabel()
                                                 ->money(currency: 'IDR', locale: 'id')
@@ -600,7 +596,7 @@ class ListClients extends ListRecords
                                                         return '0%';
                                                     }
 
-                                                    return Schema::end((string) round((((float) ($state) / (float) ($get('contract_budget'))) * 100), 2) . '%');
+                                                    return Schema::end((string) round((((float) ($state) / (float) ($get('contract_budget'))) * 100), 2).'%');
                                                 })
                                                 ->hiddenLabel()
                                                 ->money(currency: 'IDR', locale: 'id')
@@ -635,7 +631,7 @@ class ListClients extends ListRecords
                                                 TextEntry::make('total_item_planned_budget')
                                                     ->money(currency: 'IDR', locale: 'id'),
                                             ])
-                                            ->contained(false)
+                                            ->contained(false),
                                     ]),
                             ]),
                     ]),
@@ -650,7 +646,7 @@ class ListClients extends ListRecords
                             ->required(),
                     ])
                     ->modalSubmitAction(false)
-                    ->extraModalFooterActions(fn(Action $action): array => [
+                    ->extraModalFooterActions(fn (Action $action): array => [
                         Action::make('review')
                             ->modalWidth(Width::SevenExtraLarge)
                             ->label('Impor')
@@ -676,7 +672,7 @@ class ListClients extends ListRecords
                                     'contract_year' => null,
                                     'start_period' => null,
                                     'end_period' => null,
-                                    'programs' => []
+                                    'programs' => [],
                                 ];
 
                                 // State machine to track which section we're in
@@ -688,23 +684,27 @@ class ListClients extends ListRecords
                                     $secondCol = $row[1] ?? null;
 
                                     // Detect section transitions
-                                    if ($firstCol === "Nama Klien") {
+                                    if ($firstCol === 'Nama Klien') {
                                         $section = 'client_header';
+
                                         continue;
                                     }
 
-                                    if ($firstCol === "Jabatan PIC") {
+                                    if ($firstCol === 'Jabatan PIC') {
                                         $section = 'pic_header';
+
                                         continue;
                                     }
 
-                                    if ($firstCol === "Nomor Kontrak") {
+                                    if ($firstCol === 'Nomor Kontrak') {
                                         $section = 'contract_header';
+
                                         continue;
                                     }
 
-                                    if ($firstCol === "No" && $secondCol === "Program") {
+                                    if ($firstCol === 'No' && $secondCol === 'Program') {
                                         $section = 'program_header';
+
                                         continue;
                                     }
 
@@ -723,7 +723,7 @@ class ListClients extends ListRecords
 
                                         case 'pic_header':
                                             // Only add if it's not another header
-                                            if ($firstCol !== "Nomor Kontrak") {
+                                            if ($firstCol !== 'Nomor Kontrak') {
                                                 $result['client_pics'][] = [
                                                     'pic_position' => $firstCol,
                                                     'pic_name' => $secondCol,
@@ -751,21 +751,21 @@ class ListClients extends ListRecords
                                             }
 
                                             // Initialize program if not exists
-                                            if (!isset($programsMap[$programName])) {
+                                            if (! isset($programsMap[$programName])) {
                                                 $programsMap[$programName] = [
                                                     'program_name' => $programName,
                                                     'program_category_id' => 1,
-                                                    'program_activities' => []
+                                                    'program_activities' => [],
                                                 ];
                                             }
 
                                             // Initialize activity if not exists
-                                            if (!isset($programsMap[$programName]['program_activities'][$activityName])) {
+                                            if (! isset($programsMap[$programName]['program_activities'][$activityName])) {
                                                 $programsMap[$programName]['program_activities'][$activityName] = [
                                                     'activity_name' => $activityName,
                                                     'est_start_date' => now('Asia/Jakarta')->addYear(),
                                                     'est_end_date' => now('Asia/Jakarta')->addYears(2),
-                                                    'items' => []
+                                                    'items' => [],
                                                 ];
                                             }
 
@@ -899,6 +899,7 @@ class ListClients extends ListRecords
                                                     ->multiple()
                                                     ->appendFiles()
                                                     ->maxSize(10240)
+                                                    ->dehydrated(true)
                                                     ->storeFiles(false)
                                                     ->maxFiles(10)
                                                     ->columnSpanFull(),
@@ -912,7 +913,7 @@ class ListClients extends ListRecords
                                             ->columns(4)
                                             ->defaultItems(0)
                                             ->collapsed(true)
-                                            ->itemLabel(fn(array $state): ?string => $state['program_name'] ?? null)
+                                            ->itemLabel(fn (array $state): ?string => $state['program_name'] ?? null)
                                             ->schema([
                                                 Select::make('program_category_id')
                                                     ->required()
@@ -953,7 +954,7 @@ class ListClients extends ListRecords
                                                     ->columnSpanFull()
                                                     ->columns(4)
                                                     ->collapsed(true)
-                                                    ->itemLabel(fn(array $state): ?string => $state['activity_name'] ?? null)
+                                                    ->itemLabel(fn (array $state): ?string => $state['activity_name'] ?? null)
                                                     ->schema([
                                                         TextInput::make('activity_name')
                                                             ->required()
@@ -974,7 +975,7 @@ class ListClients extends ListRecords
                                                             ->defaultItems(0)
                                                             ->columnSpanFull()
                                                             ->extraAttributes([
-                                                                'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]'
+                                                                'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
                                                             ])
                                                             ->compact()
                                                             ->table([
@@ -996,8 +997,8 @@ class ListClients extends ListRecords
                                                                 TextInput::make('contract_total_price'),
                                                                 TextInput::make('planned_unit_price'),
                                                                 TextInput::make('planned_total_price'),
-                                                            ])
-                                                    ])
+                                                            ]),
+                                                    ]),
 
                                             ]),
                                     ]),
@@ -1010,8 +1011,10 @@ class ListClients extends ListRecords
                                             'name' => $data['client_name'],
                                         ]);
 
-                                        foreach ($data['documents'] as $index => $document) {
-                                            $createdClient->addMedia($document)->toMediaCollection('client_documents');
+                                        if (! empty($data['documents'])) {
+                                            foreach ($data['documents'] as $index => $document) {
+                                                $createdClient->addMedia($document)->toMediaCollection('client_documents', 'local');
+                                            }
                                         }
 
                                         $createdContractData = PartnershipContract::create([
@@ -1019,7 +1022,7 @@ class ListClients extends ListRecords
                                             'contract_number' => $data['contract_number'],
                                             'contract_year' => $data['contract_year'],
                                             'start_date' => $data['start_period'],
-                                            'end_date' => $data['end_period']
+                                            'end_date' => $data['end_period'],
                                         ]);
 
                                         foreach ($data['client_pics'] as $index => $pic) {
@@ -1028,23 +1031,23 @@ class ListClients extends ListRecords
                                                 'name' => $pic['pic_name'],
                                                 'email' => $pic['pic_email'],
                                                 'phone' => $pic['pic_phone'],
-                                                'position' => $pic['pic_position']
+                                                'position' => $pic['pic_position'],
                                             ]);
                                         }
 
                                         foreach ($data['programs'] as $index => $program) {
                                             $createdProgram = Program::create([
-                                                'code' => Str::slug($data['client_slug'] . ' ' . $program['program_name']),
+                                                'code' => Str::slug($data['client_slug'].' '.$program['program_name']),
                                                 'program_category_id' => $program['program_category_id'],
                                                 'employee_id' => $program['program_pic'],
                                                 'description' => $program['description'],
-                                                'name' => $program['program_name']
+                                                'name' => $program['program_name'],
                                             ]);
 
                                             $createdContractData->programs()->attach($createdProgram->id);
 
                                             $createdCoa = Coa::create([
-                                                'code' => Str::slug($data['contract_year'] . ' ' . $createdProgram->code),
+                                                'code' => Str::slug($data['contract_year'].' '.$createdProgram->code),
                                                 'name' => implode(' - ', [$data['contract_year'], $data['client_slug'], $program['program_name']]),
                                                 'type' => COAType::Program,
                                                 'partnership_contract_id' => $createdContractData->id,
@@ -1053,11 +1056,11 @@ class ListClients extends ListRecords
 
                                             foreach ($program['program_activities'] as $actIndex => $activity) {
                                                 $createdActivity = ProgramActivity::create([
-                                                    'code' => Str::slug($createdCoa->code . ' ' . $activity['activity_name']),
+                                                    'code' => Str::slug($createdCoa->code.' '.$activity['activity_name']),
                                                     'name' => $activity['activity_name'],
                                                     'coa_id' => $createdCoa->id,
                                                     'est_start_date' => $activity['est_start_date'],
-                                                    'est_end_date' => $activity['est_end_date']
+                                                    'est_end_date' => $activity['est_end_date'],
                                                 ]);
 
                                                 foreach ($activity['items'] as $itemIndex => $item) {
@@ -1068,12 +1071,12 @@ class ListClients extends ListRecords
                                                         'unit' => $item['unit_qty'],
                                                         'frequency' => $item['freq'],
                                                         'total_item_budget' => $item['contract_total_price'],
-                                                        'total_item_planned_budget' => $item['planned_total_price']
+                                                        'total_item_planned_budget' => $item['planned_total_price'],
                                                     ]);
                                                 }
                                             }
                                         }
-                                        Log::info("\n\n\nClient Created : " . $data['client_slug'] . "\n\n\n");
+                                        Log::info("\n\n\nClient Created : ".$data['client_slug']."\n\n\n");
 
                                         Notification::make('client-created')
                                             ->title('Klien Berhasil Didaftarkan!')
@@ -1081,24 +1084,23 @@ class ListClients extends ListRecords
                                             ->send();
                                     });
                                 } catch (Throwable $th) {
-                                    Log::error("\n\n\n" . $th->getMessage() . "\n\n\n");
+                                    Log::error("\n\n\n".$th->getMessage()."\n\n\n");
                                     Notification::make('client-created')
                                         ->title('Klien Gagal Didaftarkan!')
                                         ->body('Mohon coba kembali setelah beberapa saat.')
                                         ->danger()
                                         ->send();
                                 }
-                            })
-                    ])
+                            }),
+                    ]),
             ])
                 ->label('Daftarkan Klien Baru')
                 ->icon(Heroicon::OutlinedPlus)
                 ->color('primary')
-                ->button()
+                ->button(),
         ];
     }
 }
-
 
 // [
 //     "client_name" => CLIENT_NAME,

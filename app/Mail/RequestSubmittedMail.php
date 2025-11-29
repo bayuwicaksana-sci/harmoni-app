@@ -2,9 +2,9 @@
 
 namespace App\Mail;
 
-use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Mail\Mailables\Content;
 use App\Enums\ApprovalAction;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
 
 /**
  * Email notification when a new request is submitted
@@ -14,7 +14,7 @@ class RequestSubmittedMail extends DailyPaymentRequestMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Payment Request Submitted Successfully - ' . $this->request->request_number,
+            subject: 'Payment Request Submitted Successfully - '.$this->request->request_number,
         );
     }
 
@@ -46,15 +46,15 @@ class RequestSubmittedMail extends DailyPaymentRequestMail
 
                 'approvalInfo' => [
                     'title' => 'Status Approval',
-                    'msg' => 'Permintaan Anda sedang menunggu approval dari ' . $nextApproval?->approver->user->name,
-                    'currentStep' => 'Step 1 of ' . $totalSteps,
-                    'nextApprover' => $nextApproval ? $nextApproval->approver->user->name . ' (' . $nextApproval->approver->jobTitle->title . ')' : '-',
+                    'msg' => 'Permintaan Anda sedang menunggu approval dari '.$nextApproval?->approver->user->name,
+                    'currentStep' => 'Step 1 of '.$totalSteps,
+                    'nextApprover' => $nextApproval ? $nextApproval->approver->user->name.' ('.$nextApproval->approver->jobTitle->title.')' : '-',
                 ],
 
                 'actionButton' => [
                     'text' => 'Lihat Detail Permintaan',
                     'url' => route('filament.admin.resources.daily-payment-requests.view', $this->request),
-                    'color' => '#6366f1'
+                    'color' => '#6366f1',
                 ],
 
                 'additionalNotes' => 'Anda dapat memantau status permintaan melalui dashboard.',

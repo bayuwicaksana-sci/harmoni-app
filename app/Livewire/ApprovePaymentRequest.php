@@ -2,13 +2,13 @@
 
 namespace App\Livewire;
 
-use Exception;
 use App\Enums\ApprovalAction;
 use App\Enums\DPRStatus;
 use App\Models\ApprovalHistory;
 use App\Models\DailyPaymentRequest;
 use App\Services\ApprovalService;
 use App\Services\DPRNotificationService;
+use Exception;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -17,22 +17,29 @@ use Livewire\WithPagination;
 
 class ApprovePaymentRequest extends Component
 {
-    use WithPagination, WithoutUrlPagination;
+    use WithoutUrlPagination, WithPagination;
 
     public DailyPaymentRequest $request;
+
     public ApprovalHistory $approvalHistory;
+
     public string $notes = '';
+
     public bool $showApproveConfirm = false;
+
     public bool $showRejectConfirm = false;
+
     public bool $actionCompleted = false;
+
     public string $actionResult = ''; // 'approved' or 'rejected'
+
     public ?string $errorMessage = null;
 
     // #[Layout('components.layouts.approval')]
     public function render()
     {
         return view('livewire.approve-payment-request', [
-            'request_items' => $this->request->requestItems()->paginate(1)
+            'request_items' => $this->request->requestItems()->paginate(1),
         ])->layout('components.layouts.approval');
     }
 
@@ -43,7 +50,7 @@ class ApprovePaymentRequest extends Component
             'requester.jobTitle.department',
             'requester.jobTitle',
             'requestItems',
-            'approvalHistories.approver.jobTitle'
+            'approvalHistories.approver.jobTitle',
         ])->findOrFail($requestId);
 
         // Load the specific approval history
@@ -62,7 +69,7 @@ class ApprovePaymentRequest extends Component
         }
 
         // Check if this is still the current pending approval (sequential check)
-        if (!$this->actionCompleted && !$this->isCurrentPendingApproval()) {
+        if (! $this->actionCompleted && ! $this->isCurrentPendingApproval()) {
             abort(403, 'This approval is not yet available. Please wait for previous approvals to complete.');
         }
     }
@@ -165,7 +172,7 @@ class ApprovePaymentRequest extends Component
             $this->showApproveConfirm = false;
         } catch (Exception $e) {
             DB::rollBack();
-            $this->errorMessage = 'Terjadi kesalahan: ' . $e->getMessage();
+            $this->errorMessage = 'Terjadi kesalahan: '.$e->getMessage();
             $this->showApproveConfirm = false;
         }
     }
@@ -183,7 +190,7 @@ class ApprovePaymentRequest extends Component
         ]);
 
         try {
-            DB::beginTransaction();
+            // DB::beginTransaction();
 
             // Validate approval is still pending
             $this->approvalHistory->refresh();
@@ -192,24 +199,27 @@ class ApprovePaymentRequest extends Component
                 throw new Exception('Approval sudah diproses sebelumnya.');
             }
 
+            $approvalService = app(ApprovalService::class);
+            $approvalService->reject($this->approvalHistory, $this->notes ?: null);
+
             // Update approval history
-            $this->approvalHistory->action = ApprovalAction::Rejected;
-            $this->approvalHistory->notes = $this->notes;
-            $this->approvalHistory->approved_at = now();
-            $this->approvalHistory->save();
+            // $this->approvalHistory->action = ApprovalAction::Rejected;
+            // $this->approvalHistory->notes = $this->notes;
+            // $this->approvalHistory->approved_at = now();
+            // $this->approvalHistory->save();
 
-            // Update request status to rejected
-            $this->request->status = DPRStatus::Rejected;
-            $this->request->save();
+            // // Update request status to rejected
+            // $this->request->status = DPRStatus::Rejected;
+            // $this->request->save();
 
-            DB::commit();
+            // DB::commit();
 
             // Send notifications
-            $notificationService = app(DPRNotificationService::class);
-            $notificationService->sendApprovalActionNotification(
-                $this->request->fresh(),
-                $this->approvalHistory->fresh()
-            );
+            // $notificationService = app(DPRNotificationService::class);
+            // $notificationService->sendApprovalActionNotification(
+            //     $this->request->fresh(),
+            //     $this->approvalHistory->fresh()
+            // );
 
             // Update UI state
             $this->actionCompleted = true;
@@ -217,7 +227,7 @@ class ApprovePaymentRequest extends Component
             $this->showRejectConfirm = false;
         } catch (Exception $e) {
             DB::rollBack();
-            $this->errorMessage = 'Terjadi kesalahan: ' . $e->getMessage();
+            $this->errorMessage = 'Terjadi kesalahan: '.$e->getMessage();
             $this->showRejectConfirm = false;
         }
     }
@@ -227,7 +237,7 @@ class ApprovePaymentRequest extends Component
      */
     public function formatCurrency($amount): string
     {
-        return 'Rp ' . number_format($amount, 0, ',', '.');
+        return 'Rp '.number_format($amount, 0, ',', '.');
     }
 
     /**

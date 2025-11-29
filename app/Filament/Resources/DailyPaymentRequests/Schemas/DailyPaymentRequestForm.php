@@ -2,32 +2,17 @@
 
 namespace App\Filament\Resources\DailyPaymentRequests\Schemas;
 
-use App\Enums\DPRStatus;
-use App\Models\Coa;
-use App\Models\DailyPaymentRequest;
-use App\Models\RequestItemType;
-use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
+use App\Enums\RequestPaymentType;
 use Filament\Forms\Components\Repeater\TableColumn;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Flex;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\TextSize;
-use Filament\Support\RawJs;
-use Illuminate\Support\Facades\Auth;
 
 class DailyPaymentRequestForm
 {
@@ -62,7 +47,7 @@ class DailyPaymentRequestForm
                         TextEntry::make('status')
                             ->badge(),
                         TextEntry::make('total_request_amount')
-                            ->getStateUsing(fn($record) => $record->total_request_amount)
+                            ->getStateUsing(fn ($record) => $record->total_request_amount)
                             ->label('Total Nominal Request')
                             ->belowContent('(Tidak termasuk pajak)')
                             ->money('IDR'),
@@ -73,7 +58,7 @@ class DailyPaymentRequestForm
                     ->columnSpanFull()
                     ->tabs([
                         Tab::make('Riwayat Approval')
-                            ->visible(fn($record) => $record->approvalHistories()->exists())
+                            ->visible(fn ($record) => $record->approvalHistories()->exists())
                             ->schema([
                                 RepeatableEntry::make('approvalHistories')
                                     ->columnSpanFull()
@@ -85,7 +70,7 @@ class DailyPaymentRequestForm
                                         TableColumn::make('Jabatan'),
                                         TableColumn::make('Status'),
                                         TableColumn::make('Tanggal Disetujui'),
-                                        TableColumn::make('Notes')->width('250px')
+                                        TableColumn::make('Notes')->width('250px'),
                                     ])
                                     ->schema([
                                         TextEntry::make('sequence')
@@ -112,13 +97,13 @@ class DailyPaymentRequestForm
                                     ])
                                     ->columns(3)
                                     ->grid(1)
-                                    ->visible(fn($record) => $record->approvalHistories()->exists()),
+                                    ->visible(fn ($record) => $record->approvalHistories()->exists()),
                             ]),
                         Tab::make('Summary COA')
                             ->schema([
                                 RepeatableEntry::make('groupedByCoa')
                                     ->columnSpanFull()
-                                    ->state(fn($record) => $record->getGroupedByCoa())
+                                    ->state(fn ($record) => $record->getGroupedByCoa())
                                     ->hiddenLabel()
                                     // ->contained(false)
                                     // ->table([
@@ -143,26 +128,34 @@ class DailyPaymentRequestForm
                                             ->hiddenLabel()
                                             ->contained(false)
                                             ->table([
-                                                TableColumn::make('Aktivitas'),
-                                                TableColumn::make('Deskripsi'),
-                                                TableColumn::make('Qty'),
-                                                TableColumn::make('Unit Qty'),
-                                                TableColumn::make('Base Price'),
-                                                TableColumn::make('Total Price'),
+                                                TableColumn::make('Aktivitas')->width('350px'),
+                                                TableColumn::make('Deskripsi')->width('350px'),
+                                                TableColumn::make('Qty')->width('70px'),
+                                                TableColumn::make('Unit Qty')->width('150px'),
+                                                TableColumn::make('Base Price')->width('200px'),
+                                                TableColumn::make('Total Price')->width('200px'),
+                                                TableColumn::make('Keterangan')->width('300px'),
+                                            ])
+                                            ->extraAttributes([
+                                                'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
                                             ])
                                             ->schema([
                                                 TextEntry::make('programActivity.name')->placeholder('N/A'),
                                                 TextEntry::make('description'),
                                                 TextEntry::make('quantity')
+                                                    ->getStateUsing(fn ($record) => $record->payment_type === RequestPaymentType::Advance ? $record->quantity : $record->act_quantity)
                                                     ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
                                                 TextEntry::make('unit_quantity'),
                                                 TextEntry::make('amount_per_item')
+                                                    ->getStateUsing(fn ($record) => $record->payment_type === RequestPaymentType::Advance ? $record->amount_per_item : $record->act_amount_per_item)
                                                     ->money(currency: 'IDR', locale: 'id'),
                                                 TextEntry::make('total_amount')
-                                                    ->getStateUsing(fn($record) => $record->total_amount)
+                                                    ->getStateUsing(fn ($record) => $record->payment_type === RequestPaymentType::Advance ? $record->total_amount : $record->total_act_amount)
                                                     ->money(currency: 'IDR', locale: 'id'),
-                                            ])
-
+                                                TextEntry::make('notes')
+                                                    ->label('Keterangan')
+                                                    ->placeholder('N/A'),
+                                            ]),
 
                                     ]),
                             ]),
@@ -170,7 +163,7 @@ class DailyPaymentRequestForm
                             ->schema([
                                 RepeatableEntry::make('transferInstructions')
                                     ->columnSpanFull()
-                                    ->state(fn($record) => $record->getGroupedByBankAccount())
+                                    ->state(fn ($record) => $record->getGroupedByBankAccount())
                                     ->hiddenLabel()
                                     // ->grid(3)
                                     ->contained(false)

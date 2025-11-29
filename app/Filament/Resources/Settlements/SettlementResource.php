@@ -6,31 +6,59 @@ use App\Enums\RequestItemStatus;
 use App\Filament\Resources\Settlements\Pages\CreateSettlement;
 use App\Filament\Resources\Settlements\Pages\EditSettlement;
 use App\Filament\Resources\Settlements\Pages\ListSettlements;
+use App\Filament\Resources\Settlements\Pages\ViewSettlement;
+use App\Filament\Resources\Settlements\RelationManagers\SettlementItemsRelationManager;
 use App\Filament\Resources\Settlements\Schemas\SettlementForm;
+use App\Filament\Resources\Settlements\Schemas\SettlementInfolist;
 use App\Filament\Resources\Settlements\Tables\SettlementsTable;
+use App\Filament\Resources\Settlements\Widgets\RequestItemToSettle;
 use App\Models\RequestItem;
+use App\Models\Settlement;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
-use UnitEnum;
 
 class SettlementResource extends Resource
 {
-    protected static ?string $model = RequestItem::class;
-    protected static ?string $modelLabel = 'Settlement';
-    protected static ?string $pluralModelLabel = 'Settlements';
-    protected static ?string $navigationLabel = 'Settlement';
-    protected static string | \BackedEnum | null $navigationIcon = Heroicon::OutlinedBanknotes;
-    protected static string | \UnitEnum | null $navigationGroup = 'Transactions';
-    protected static ?string $slug = 'settlements';
+    protected static ?string $model = Settlement::class;
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+
+    protected static ?string $recordTitleAttribute = 'settlement_number';
+
+    public static function getNavigationBadge(): ?string
+    {
+        // $count = RequestItem::query()->where('status', RequestItemStatus::WaitingSettlement)->whereNot('requester_id', Auth::user()?->employee?->id)->whereHas('approvalHistories', function ($q) {
+        //     // Only show requests where this employee is the CURRENT pending approver
+        //     $q->where('approver_id', Auth::user()?->employee?->id)
+        //         ->where('action', 'pending')
+        //         ->whereRaw('sequence = (
+        //               SELECT MIN(sequence)
+        //               FROM approval_histories ah2
+        //               WHERE ah2.daily_payment_request_id = approval_histories.daily_payment_request_id
+        //               AND ah2.action = "pending"
+        //           )');
+        // })->count();
+        $count = RequestItem::query()->where('status', RequestItemStatus::WaitingSettlement)->count();
+
+        return $count > 0 ? $count : null;
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Jumlah Item Menunggu Settlement';
+    }
 
     public static function form(Schema $schema): Schema
     {
         return SettlementForm::configure($schema);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return SettlementInfolist::configure($schema);
     }
 
     public static function table(Table $table): Table
@@ -41,7 +69,7 @@ class SettlementResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            SettlementItemsRelationManager::class,
         ];
     }
 
@@ -50,14 +78,15 @@ class SettlementResource extends Resource
         return [
             'index' => ListSettlements::route('/'),
             'create' => CreateSettlement::route('/create'),
+            'view' => ViewSettlement::route('/{record}'),
             'edit' => EditSettlement::route('/{record}/edit'),
         ];
     }
 
-    public static function getEloquentQuery(): Builder
+    public static function getWidgets(): array
     {
-        return parent::getEloquentQuery()->whereHas('dailyPaymentRequest', function (Builder $query) {
-            $query->whereRequesterId(Auth::user()->employee->id);
-        })->where('request_items.status', RequestItemStatus::WaitingSettlement);
+        return [
+            RequestItemToSettle::class,
+        ];
     }
 }

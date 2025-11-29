@@ -5,7 +5,7 @@ namespace App\Filament\Resources\Settlements\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -15,47 +15,37 @@ class SettlementsTable
     {
         return $table
             ->columns([
-                // TextColumn::make('dailyPaymentRequest.request_number')
-                //     ->label('Request ID'),
-                TextColumn::make('coa.name')
-                    ->label('COA')
+                TextColumn::make('settlement_number')
                     ->searchable(),
-                TextColumn::make('programActivity.name')
-                    ->label('Aktivitas')
-                    ->placeholder('N/A'),
-                TextColumn::make('description')
-                    ->label('Deskripsi'),
-                TextColumn::make('payment_type')
-                    ->label('Tipe Request')
+                TextColumn::make('submitter_id')
+                    ->numeric()
+                    ->sortable(),
+                TextColumn::make('submit_date')
+                    ->dateTime()
+                    ->sortable(),
+                TextColumn::make('status')
                     ->badge()
                     ->searchable(),
-                TextColumn::make('quantity')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('amount_per_item')
-                    ->label('Harga per Item')
-                    ->numeric()
-                    ->money(currency: "IDR", locale: "id")
-                    ->sortable(),
-                TextColumn::make('total_amount')
-                    ->getStateUsing(fn($record) => $record->total_amount)
-                    ->label('Total Harga Item')
-                    ->numeric()
-                    ->money(currency: "IDR", locale: "id"),
-                SpatieMediaLibraryImageColumn::make('attachments')
-                    ->collection('request_item_attachments'),
+                TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updated_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //
             ])
             ->recordActions([
+                ViewAction::make(),
                 EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ])
-            ->defaultGroup('dailyPaymentRequest.request_number');
+            ]);
     }
 }

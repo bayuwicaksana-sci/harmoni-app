@@ -123,7 +123,7 @@
             @foreach ($request_items as $index => $item)
                 <div class="item-card">
                     <div class="item-header">
-                        <span class="item-number">Item #{{ $index + 1 }}</span>
+                        {{-- <span class="item-number">Item #{{ $index + 1 }}</span> --}}
                         <span
                             class="payment-type-badge payment-type-{{ strtolower(str_replace(' ', '-', $item->payment_type->value)) }}">
                             {{ $item->payment_type->getLabel() }}
@@ -143,17 +143,21 @@
 
                         <div class="item-row">
                             <span class="item-label">Kuantitas</span>
-                            <span class="item-value">{{ $item->quantity }} {{ $item->unit_quantity }}</span>
+                            <span
+                                class="item-value">{{ $item->payment_type === \App\Enums\RequestPaymentType::Advance ? $item->quantity : $item->act_quantity }}
+                                {{ $item->unit_quantity }}</span>
                         </div>
 
                         <div class="item-row">
                             <span class="item-label">Harga Satuan</span>
-                            <span class="item-value">{{ $this->formatCurrency($item->amount_per_item) }}</span>
+                            <span
+                                class="item-value">{{ $this->formatCurrency($item->payment_type === \App\Enums\RequestPaymentType::Advance ? $item->amount_per_item : $item->act_amount_per_item) }}</span>
                         </div>
 
                         <div class="item-row">
                             <span class="item-label">Subtotal</span>
-                            <span class="item-value">{{ $this->formatCurrency($item->total_amount) }}</span>
+                            <span
+                                class="item-value">{{ $this->formatCurrency($item->payment_type === \App\Enums\RequestPaymentType::Advance ? $item->total_amount : $item->total_act_amount) }}</span>
                         </div>
 
                         @if ($item->is_taxed && !is_null($item->tax_id) && !is_null($item->tax_method))

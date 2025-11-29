@@ -33,3 +33,5 @@ boost.json
 CLAUDE.md
 .claude/
 nul
+reference/
+.z.ai.json

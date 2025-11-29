@@ -24,6 +24,8 @@ return new class extends Migration
             $table->decimal('quantity', 15, 2)->nullable();
             $table->text('unit_quantity')->nullable();
             $table->decimal('amount_per_item', 15, 2)->nullable();
+            $table->decimal('act_quantity', 15, 2)->nullable();
+            $table->decimal('act_amount_per_item', 15, 2)->nullable();
             $table->string('tax_method')->nullable();
             // $table->decimal('amount', 15, 2)->nullable();
             // $table->decimal('tax_amount', 15, 2)->nullable();
@@ -34,7 +36,10 @@ return new class extends Migration
             $table->string('account_owner')->nullable();
             $table->string('status')->nullable();
             $table->boolean('is_taxed')->default(false);
+            $table->boolean('is_unplanned')->default(false);
             $table->foreignId('tax_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('settlement_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('settling_for')->nullable()->constrained('request_items', 'id')->cascadeOnDelete();
 
             // Snapshot fields
             $table->string('coa_code', 100)->nullable();

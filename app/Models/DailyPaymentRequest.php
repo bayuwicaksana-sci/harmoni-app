@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -41,14 +40,17 @@ class DailyPaymentRequest extends Model implements HasMedia
         'status' => DPRStatus::class,
     ];
 
-    protected $with = ['requester', 'requestItems'];
+    protected $with = ['requester'];
 
     /**
      * Configuration for document sequence
      */
     const DOCUMENT_TYPE = 'daily_payment_request';
+
     const DOCUMENT_PREFIX = 'SCI-FIN-PAY';
+
     const RESET_PERIOD = 'none'; // Change to 'monthly' or 'none' as needed
+
     const NUMBER_LENGTH = 6;
 
     protected static function booted()
@@ -127,7 +129,11 @@ class DailyPaymentRequest extends Model implements HasMedia
     protected function totalRequestAmount(): Attribute
     {
         return new Attribute(
-            get: fn() => $this->requestItems->sum('total_amount')
+            get: function () {
+                $total = $this->requestItems->where('payment_type', RequestPaymentType::Advance)->sum('total_amount') + $this->requestItems->where('payment_type', RequestPaymentType::Reimburse)->sum('total_act_amount') + $this->requestItems->where('payment_type', RequestPaymentType::Offset)->sum('total_act_amount');
+
+                return $total > 0 ? $total : 0;
+            }
         );
     }
 
@@ -274,9 +280,7 @@ class DailyPaymentRequest extends Model implements HasMedia
     /**
      * Validate individual request item
      *
-     * @param RequestItem $item
-     * @param string $itemDescription
-     * @return array
+     * @param  RequestItem  $item
      */
     protected function validateRequestItem($item, string $itemDescription): array
     {
@@ -285,11 +289,11 @@ class DailyPaymentRequest extends Model implements HasMedia
 
         // Required fields
         if (empty($item->coa_id)) {
-            $errors[] = $prefix . 'COA diperlukan';
+            $errors[] = $prefix.'COA diperlukan';
         }
 
         if (empty($item->payment_type)) {
-            $errors[] = $prefix . 'Tipe Request diperlukan';
+            $errors[] = $prefix.'Tipe Request diperlukan';
         }
 
         // Advance payment specific validation
@@ -306,16 +310,20 @@ class DailyPaymentRequest extends Model implements HasMedia
         // }
 
         // Quantity and amount validation
-        if (empty($item->quantity) || $item->quantity <= 0) {
-            $errors[] = $prefix . 'Quantity harus lebih besar dari 0';
+        if (($item->payment_type === RequestPaymentType::Advance && (empty($item->quantity) || $item->quantity <= 0)) || (($item->payment_type === RequestPaymentType::Reimburse || $item->payment_type === RequestPaymentType::Offset) && (empty($item->act_quantity) || $item->act_quantity <= 0))) {
+            $errors[] = $prefix.'Quantity harus lebih besar dari 0';
         }
 
-        if (empty($item->amount_per_item) || $item->amount_per_item <= 0) {
-            $errors[] = $prefix . 'Harga per item harus lebih besar dari 0';
+        if (($item->payment_type === RequestPaymentType::Advance && (empty($item->amount_per_item) || $item->amount_per_item <= 0)) || (($item->payment_type === RequestPaymentType::Reimburse || $item->payment_type === RequestPaymentType::Offset) && (empty($item->act_amount_per_item) || $item->act_amount_per_item <= 0))) {
+            $errors[] = $prefix.'Harga per item harus lebih besar dari 0';
+        }
+
+        if ($item->payment_type === RequestPaymentType::Reimburse && (! $item->hasMedia('request_item_attachments') || ! $item->hasMedia('request_item_image'))) {
+            $errors[] = $prefix.'Lampiran dan Foto Item diperlukan';
         }
 
         if (empty($item->bank_name) || empty($item->bank_account) || empty($item->account_owner)) {
-            $errors[] = $prefix . 'Informasi tujuan transfer diperlukan';
+            $errors[] = $prefix.'Informasi tujuan transfer diperlukan';
         }
 
         // Calculated fields validation
@@ -333,22 +341,21 @@ class DailyPaymentRequest extends Model implements HasMedia
 
     /**
      * Check if request can be submitted
-     *
-     * @return bool
      */
     public function canBeSubmitted(): bool
     {
         $validation = $this->validateForSubmission();
+
         return $validation['valid'] && $this->status === DPRStatus::Draft;
     }
 
     /**
      * Get submission validation errors
-     * @return array
      */
     public function getSubmissionErrors(): array
     {
         $validation = $this->validateForSubmission();
+
         return $validation['errors'];
     }
 
@@ -358,15 +365,16 @@ class DailyPaymentRequest extends Model implements HasMedia
             ->groupBy('bank_account')
             ->mapWithKeys(function ($items, $bankAccount) {
                 $firstItem = $items->first();
+
                 return [
                     $bankAccount => [
                         'bank_account' => $bankAccount,
                         'bank_name' => $firstItem->bank_name,
                         'account_owner' => $firstItem->account_owner,
                         'total_amount' => $items->sum(function ($item) {
-                            return $item->total_amount;
+                            return $item->payment_type === RequestPaymentType::Advance ? $item->total_amount : $item->total_act_amount;
                         }),
-                    ]
+                    ],
                 ];
             });
     }
@@ -378,14 +386,15 @@ class DailyPaymentRequest extends Model implements HasMedia
             ->mapWithKeys(function ($items, $coaId) {
                 $firstItem = $items->first();
                 $coaName = $firstItem->coa->name ?? 'Belum Memiliki COA';
+
                 return [
                     $coaName => [
                         'coa_name' => $coaName,
                         'total_amount' => $items->sum(function ($item) {
-                            return $item->total_amount;
+                            return $item->payment_type === RequestPaymentType::Advance ? $item->total_amount : $item->total_act_amount;
                         }),
                         'items' => $items,
-                    ]
+                    ],
                 ];
             });
     }

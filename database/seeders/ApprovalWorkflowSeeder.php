@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\ApprovalRule;
 use App\Models\ApprovalWorkflow;
 use App\Models\JobTitle;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class ApprovalWorkflowSeeder extends Seeder
@@ -25,6 +24,7 @@ class ApprovalWorkflowSeeder extends Seeder
 
         // Get Job Titles
         $ceoJobTitle = JobTitle::where('code', 'CEO')->first();
+        $financeOperatorJobTitle = JobTitle::where('code', 'FO')->first();
         $headOfFinanceJobTitle = JobTitle::where('code', 'HOF')->first();
 
         // Rule 1: Supervisor always approves first
@@ -49,10 +49,21 @@ class ApprovalWorkflowSeeder extends Seeder
             'approver_job_title_id' => $ceoJobTitle->id,
         ]);
 
-        // Rule 3: Head of Finance always approves last
+        // Rule 3: Finance Operator always
         ApprovalRule::create([
             'approval_workflow_id' => $workflow->id,
             'sequence' => 3,
+            'condition_type' => 'always',
+            'condition_value' => null,
+            'approver_type' => 'job_title',
+            'approver_job_level_id' => null,
+            'approver_job_title_id' => $financeOperatorJobTitle->id,
+        ]);
+
+        // Rule 4: Head of Finance always approves last
+        ApprovalRule::create([
+            'approval_workflow_id' => $workflow->id,
+            'sequence' => 4,
             'condition_type' => 'always',
             'condition_value' => null,
             'approver_type' => 'job_title',

@@ -25,10 +25,16 @@ class ListDailyPaymentRequests extends ListRecords
     public function getTabs(): array
     {
         return [
-            'all' => Tab::make('Semua Request')->modifyQueryUsing(fn(Builder $query) => $query->where('status', DPRStatus::Pending)),
+            'all' => Tab::make('Semua Request')->modifyQueryUsing(function (Builder $query) {
+                if (Auth::user()->employee->jobTitle->jobLevel->level === 5 || Auth::user()->employee->jobTitle->department->code === 'FIN') {
+                    $query->where('status', DPRStatus::Pending);
+                } else {
+                    $query->where('status', DPRStatus::Pending)->where('requester_id', Auth::user()->employee->id);
+                }
+            }),
 
             'require_approval' => Tab::make('Permintaan Approval')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('status', DPRStatus::Pending)->whereNot('requester_id', Auth::user()?->employee?->id)
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', DPRStatus::Pending)->whereNot('requester_id', Auth::user()?->employee?->id)
                     ->whereHas('approvalHistories', function ($q) {
                         // Only show requests where this employee is the CURRENT pending approver
                         $q->where('approver_id', Auth::user()?->employee?->id)
@@ -40,7 +46,7 @@ class ListDailyPaymentRequests extends ListRecords
                       AND ah2.action = "pending"
                   )');
                     }))
-                ->badge(fn() => DailyPaymentRequest::where('status', DPRStatus::Pending)->whereNot('requester_id', Auth::user()?->employee?->id)->whereHas('approvalHistories', function ($q) {
+                ->badge(fn () => DailyPaymentRequest::where('status', DPRStatus::Pending)->whereNot('requester_id', Auth::user()?->employee?->id)->whereHas('approvalHistories', function ($q) {
                     // Only show requests where this employee is the CURRENT pending approver
                     $q->where('approver_id', Auth::user()?->employee?->id)
                         ->where('action', 'pending')
@@ -51,28 +57,28 @@ class ListDailyPaymentRequests extends ListRecords
                       AND ah2.action = "pending"
                   )');
                 })->count())
-                ->badgeColor("info"),
+                ->badgeColor('info'),
 
             'my_requests' => Tab::make('Request Saya')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('requester_id', Auth::user()?->employee?->id)),
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('requester_id', Auth::user()?->employee?->id)),
 
             'draft' => Tab::make('Draft')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('status', DPRStatus::Draft)->where('requester_id', Auth::user()?->employee?->id))
-                ->badge(fn() => DailyPaymentRequest::where('status', DPRStatus::Draft)->where('requester_id', Auth::user()?->employee?->id)->count()),
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', DPRStatus::Draft)->where('requester_id', Auth::user()?->employee?->id))
+                ->badge(fn () => DailyPaymentRequest::where('status', DPRStatus::Draft)->where('requester_id', Auth::user()?->employee?->id)->count()),
 
             'pending' => Tab::make('Menunggu Approval')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('status', DPRStatus::Pending)->where('requester_id', Auth::user()?->employee?->id))
-                ->badge(fn() => DailyPaymentRequest::where('status', DPRStatus::Pending)->where('requester_id', Auth::user()?->employee?->id)->count())
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', DPRStatus::Pending)->where('requester_id', Auth::user()?->employee?->id))
+                ->badge(fn () => DailyPaymentRequest::where('status', DPRStatus::Pending)->where('requester_id', Auth::user()?->employee?->id)->count())
                 ->badgeColor('warning'),
 
             'approved' => Tab::make('Approved')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('status', DPRStatus::Approved)->where('requester_id', Auth::user()?->employee?->id))
-                ->badge(fn() => DailyPaymentRequest::where('status', DPRStatus::Approved)->where('requester_id', Auth::user()?->employee?->id)->count())
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', DPRStatus::Approved)->where('requester_id', Auth::user()?->employee?->id))
+                ->badge(fn () => DailyPaymentRequest::where('status', DPRStatus::Approved)->where('requester_id', Auth::user()?->employee?->id)->count())
                 ->badgeColor('success'),
 
             'rejected' => Tab::make('Ditolak')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('status', DPRStatus::Rejected)->where('requester_id', Auth::user()?->employee?->id))
-                ->badge(fn() => DailyPaymentRequest::where('status', DPRStatus::Rejected)->where('requester_id', Auth::user()?->employee?->id)->count())
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', DPRStatus::Rejected)->where('requester_id', Auth::user()?->employee?->id))
+                ->badge(fn () => DailyPaymentRequest::where('status', DPRStatus::Rejected)->where('requester_id', Auth::user()?->employee?->id)->count())
                 ->badgeColor('danger'),
         ];
     }

@@ -13,7 +13,9 @@ use Illuminate\Database\Eloquent\Model;
 class CreateDepartment extends CreateRecord
 {
     protected static string $resource = DepartmentResource::class;
+
     protected ?array $jobTitles;
+
     protected ?Department $createdDepartment;
 
     public function form(Schema $schema): Schema
@@ -25,12 +27,14 @@ class CreateDepartment extends CreateRecord
     {
         $this->jobTitles = array_filter($data['job_titles']);
         unset($data['job_titles']);
+
         return $data;
     }
 
     protected function handleRecordCreation(array $data): Model
     {
         $this->createdDepartment = static::getModel()::create($data);
+
         return $this->createdDepartment;
     }
 
@@ -39,7 +43,7 @@ class CreateDepartment extends CreateRecord
         foreach ($this->jobTitles as $index => $jobTitle) {
             $splittedWords = preg_split("/[\s,_-]+/", $jobTitle['title']);
 
-            $code = "";
+            $code = '';
             foreach ($splittedWords as $w) {
                 $code .= ucfirst(mb_substr($w, 0, 1));
             }
