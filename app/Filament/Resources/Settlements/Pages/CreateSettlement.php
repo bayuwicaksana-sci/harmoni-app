@@ -1774,20 +1774,17 @@ class CreateSettlement extends CreateRecord
                 // Service 3: Categorize items
                 $categorized = $itemProcessor->categorizeItems(collect($results));
 
-                // Service 4: Calculate offsets
+                // Service 4: Process settlement with same-COA reconciliation first
                 $offsetService = app(\App\Services\SettlementOffsetCalculationService::class);
-                $offsetResult = $offsetService->calculateOffsets($categorized, $settlement);
+                $overspentResults = $categorized['overspent'] ? collect($categorized['overspent'])->flatten(1)->toArray() : [];
 
-                // Service 5: Create reimbursement items for overspent items
-                $reimbursementItems = $offsetService->createReimbursementItems(
-                    $categorized['overspent'] ? collect($categorized['overspent'])->flatten(1)->toArray() : [],
-                    $settlement
-                );
+                // Use the new processSettlement method that handles same-COA internal reconciliation
+                $processResult = $offsetService->processSettlement($categorized, $overspentResults, $settlement);
 
                 // Collect all DPR items (offsets + reimbursements + new items)
                 $dprItems = array_merge(
-                    $offsetResult['offset_items'],
-                    $reimbursementItems
+                    $processResult['offset_items'],
+                    $processResult['reimbursement_items']
                 );
 
                 // Add new items (flatten COA groups)
@@ -1797,12 +1794,20 @@ class CreateSettlement extends CreateRecord
                     }
                 }
 
+                // Check if DPR is needed using the new service method
+                $dprService = app(\App\Services\SettlementDPRService::class);
+                $requiresDPR = $dprService->requiresDPRFromResults([
+                    'categorized' => $categorized,
+                    'reimbursement_items' => $processResult['reimbursement_items'],
+                    'offset_items' => $processResult['offset_items'],
+                ]);
+
                 // Create DPR if there are items requiring approval
-                if (! empty($dprItems)) {
+                if ($requiresDPR && ! empty($dprItems)) {
                     $this->createDPRForSettlement($settlement, $dprItems);
                 } else {
-                    // No DPR needed - set final status based on offset-calculated refund
-                    $this->finalizeSettlementWithoutDPR($settlement, $offsetResult);
+                    // No DPR needed - set final status based on processed refund amount
+                    $this->finalizeSettlementWithoutDPR($settlement, $processResult);
                 }
             });
         } catch (\Exception $e) {

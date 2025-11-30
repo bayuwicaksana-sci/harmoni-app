@@ -14,6 +14,7 @@ class SettlementDPRService
     /**
      * Check if settlement requires DPR based on current items
      * DPR is required for: unplanned items, offset items, reimbursement items
+     * But NOT for items that have been internally reconciled within same COA
      */
     public function requiresDPR(Settlement $settlement): bool
     {
@@ -24,6 +25,30 @@ class SettlementDPRService
                     ->orWhere('payment_type', RequestPaymentType::Reimburse);
             })
             ->exists();
+    }
+
+    /**
+     * Check if settlement requires DPR based on processed results
+     * This method should be called after settlement processing to determine if DPR is needed
+     */
+    public function requiresDPRFromResults(array $results): bool
+    {
+        // Check if there are any unplanned items
+        if (! empty($results['categorized']['new'])) {
+            return true;
+        }
+
+        // Check if there are any reimbursement items that weren't internally reconciled
+        if (! empty($results['reimbursement_items'])) {
+            return true;
+        }
+
+        // Check if there are any offset items for new items (not same-COA reconciliation)
+        if (! empty($results['offset_items'])) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

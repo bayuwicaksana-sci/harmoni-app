@@ -162,19 +162,16 @@ class SettlementForm
                                 // Service 3: Categorize items
                                 $categorized = $itemProcessor->categorizeItems(collect($results));
 
-                                // Service 4: Recalculate offsets
+                                // Service 4: Process settlement with same-COA reconciliation first
                                 $offsetService = app(\App\Services\SettlementOffsetCalculationService::class);
-                                $offsetResult = $offsetService->calculateOffsets($categorized, $settlement);
+                                $overspentResults = $categorized['overspent'] ? collect($categorized['overspent'])->flatten(1)->toArray() : [];
 
-                                // Service 5: Create reimbursement items
-                                $reimbursementItems = $offsetService->createReimbursementItems(
-                                    $categorized['overspent'] ? collect($categorized['overspent'])->flatten(1)->toArray() : [],
-                                    $settlement
-                                );
+                                // Use the new processSettlement method that handles same-COA internal reconciliation
+                                $processResult = $offsetService->processSettlement($categorized, $overspentResults, $settlement);
 
                                 // Update refund amount if in Draft status
                                 if ($settlement->status === SettlementStatus::Draft) {
-                                    $refundAmount = $offsetResult['total_refund_amount'] ?? 0;
+                                    $refundAmount = $processResult['total_refund_amount'] ?? 0;
                                     $settlement->update(['refund_amount' => max(0, $refundAmount)]);
                                 }
 

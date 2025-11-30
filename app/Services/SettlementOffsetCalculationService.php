@@ -154,7 +154,117 @@ class SettlementOffsetCalculationService
     }
 
     /**
-     * Create reimbursement items for overspent request items
+     * Main method to process all settlements with same-COA reconciliation first
+     */
+    public function processSettlement(array $categorized, array $overspentResults, Settlement $settlement): array
+    {
+        $offsetItems = [];
+        $reimbursementItems = [];
+        $totalRefundAmount = 0;
+
+        // Step 1: Handle same-COA internal reconciliation first
+        [$remainingOverspentResults, $remainingCategorized] = $this->handleSameCoaReconciliation($overspentResults, $categorized, $settlement);
+
+        // Step 2: Process remaining overspent items (create reimbursement items)
+        if (! empty($remainingOverspentResults)) {
+            $reimbursementItems = $this->createReimbursementItems($remainingOverspentResults, $settlement);
+        }
+
+        // Step 3: Process remaining offsets (new items, remaining variance/cancelled)
+        $offsetResult = $this->calculateOffsets($remainingCategorized, $settlement);
+        $offsetItems = $offsetResult['offset_items'];
+        $totalRefundAmount = $offsetResult['total_refund_amount'];
+
+        return [
+            'offset_items' => $offsetItems,
+            'reimbursement_items' => $reimbursementItems,
+            'total_refund_amount' => $totalRefundAmount,
+        ];
+    }
+
+    /**
+     * Handle same-COA internal reconciliation before creating external items
+     */
+    private function handleSameCoaReconciliation(array $overspentResults, array $categorized, Settlement $settlement): array
+    {
+        // Group overspent items by COA
+        $overspentByCoa = [];
+        foreach ($overspentResults as $result) {
+            $coaId = $result['item']->coa_id;
+            if (! isset($overspentByCoa[$coaId])) {
+                $overspentByCoa[$coaId] = [];
+            }
+            $overspentByCoa[$coaId][] = $result;
+        }
+
+        $remainingOverspentResults = [];
+        $remainingCategorized = $categorized;
+
+        foreach ($overspentByCoa as $coaId => $coaOverspentItems) {
+            $totalOverspent = collect($coaOverspentItems)->sum(fn ($result) => abs($result['variance']));
+
+            // Get available funds from variance items in same COA
+            $varianceItems = $categorized['variance'][$coaId] ?? [];
+            $totalVarianceAvailable = collect($varianceItems)->sum('variance');
+
+            if ($totalVarianceAvailable > 0) {
+                // Calculate how much variance can be used to offset overspent
+                $varianceToUse = min($totalOverspent, $totalVarianceAvailable);
+                $remainingOverspent = $totalOverspent - $varianceToUse;
+
+                // Update variance items to reflect usage
+                $varianceRemaining = $varianceToUse;
+                foreach ($varianceItems as $index => $varianceData) {
+                    if ($varianceRemaining <= 0) {
+                        break;
+                    }
+
+                    $availableVariance = $varianceData['variance'];
+                    $useAmount = min($availableVariance, $varianceRemaining);
+
+                    if ($useAmount > 0) {
+                        // Mark variance item as closed (used internally)
+                        $varianceData['item']->status = RequestItemStatus::WaitingSettlementReview;
+                        $varianceData['item']->save();
+
+                        // Update remaining variance
+                        $remainingCategorized['variance'][$coaId][$index]['remaining'] = $availableVariance - $useAmount;
+                        $varianceRemaining -= $useAmount;
+                    }
+                }
+
+                // Only include overspent items that couldn't be covered by variance
+                if ($remainingOverspent > 0) {
+                    // Create partial overspent results for remaining amount
+                    foreach ($coaOverspentItems as $result) {
+                        $varianceAmount = abs($result['variance']);
+                        if ($varianceAmount <= $varianceToUse) {
+                            // Fully covered - no reimbursement needed
+                            $varianceToUse -= $varianceAmount;
+                        } else {
+                            // Partially covered - create reimbursement for remaining amount
+                            $remainingVariance = $varianceAmount - $varianceToUse;
+                            $varianceToUse = 0;
+
+                            if ($remainingVariance > 0) {
+                                $partialResult = $result;
+                                $partialResult['variance'] = -$remainingVariance; // Still overspent
+                                $remainingOverspentResults[] = $partialResult;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // No variance available - all overspent items need reimbursement
+                $remainingOverspentResults = array_merge($remainingOverspentResults, $coaOverspentItems);
+            }
+        }
+
+        return [$remainingOverspentResults, $remainingCategorized];
+    }
+
+    /**
+     * Create reimbursement items for overspent request items (legacy method)
      */
     public function createReimbursementItems(array $overspentResults, Settlement $settlement): array
     {

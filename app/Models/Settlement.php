@@ -581,10 +581,11 @@ class Settlement extends Model implements HasMedia
         // Categorize items
         $categorized = $itemProcessor->categorizeItems($results);
 
-        // Calculate offsets and get refund amount
-        $offsetResult = $offsetService->calculateOffsets($categorized, $this);
+        // Process settlement with same-COA reconciliation first
+        $overspentResults = $categorized['overspent'] ? collect($categorized['overspent'])->flatten(1)->toArray() : [];
+        $processResult = $offsetService->processSettlement($categorized, $overspentResults, $this);
 
-        return max(0, $offsetResult['total_refund_amount'] ?? 0);
+        return max(0, $processResult['total_refund_amount'] ?? 0);
     }
 
     public function reject(): void

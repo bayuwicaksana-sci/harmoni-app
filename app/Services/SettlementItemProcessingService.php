@@ -104,7 +104,7 @@ class SettlementItemProcessingService
 
             if ($variance < 0) {
                 // Overspent
-                $originalRequestItem->status = RequestItemStatus::WaitingApproval;
+                $originalRequestItem->status = RequestItemStatus::WaitingSettlementReview;
 
                 return [
                     'type' => 'overspent',
