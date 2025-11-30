@@ -230,7 +230,7 @@ class DailyPaymentRequestCreateForm2
                         ->columnSpanFull()
                         ->previewable(false)
                         ->dehydrated(true)
-                        ->required(fn (Get $get) => $get('payment_type') === RequestPaymentType::Reimburse)
+                        ->required(fn (Get $get) => $get('payment_type') === RequestPaymentType::Reimburse->value)
                         ->validationMessages([
                             'required' => 'Lampiran diperlukan untuk Reimbursement',
                         ]),
@@ -244,7 +244,7 @@ class DailyPaymentRequestCreateForm2
                         ->columnSpanFull()
                         ->previewable(false)
                         ->dehydrated(true)
-                        ->required(fn (Get $get) => $get('payment_type') === RequestPaymentType::Reimburse)
+                        ->required(fn (Get $get) => $get('payment_type') === RequestPaymentType::Reimburse->value)
                         ->validationMessages([
                             'required' => 'Foto Item/Produk diperlukan untuk Reimbursement',
                         ]),

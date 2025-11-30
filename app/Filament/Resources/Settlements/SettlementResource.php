@@ -12,6 +12,7 @@ use App\Filament\Resources\Settlements\Schemas\SettlementForm;
 use App\Filament\Resources\Settlements\Schemas\SettlementInfolist;
 use App\Filament\Resources\Settlements\Tables\SettlementsTable;
 use App\Filament\Resources\Settlements\Widgets\RequestItemToSettle;
+use App\Filament\Resources\Settlements\Widgets\SettlementOverview;
 use App\Models\RequestItem;
 use App\Models\Settlement;
 use BackedEnum;
@@ -86,6 +87,7 @@ class SettlementResource extends Resource
     public static function getWidgets(): array
     {
         return [
+            SettlementOverview::class,
             RequestItemToSettle::class,
         ];
     }

@@ -209,7 +209,7 @@ class RequestItem extends Model implements HasMedia
                     return null;
                 }
 
-                return ($this->payment_type === RequestPaymentType::Advance ? $this->total_amount : $this->total_act_amount) * $this->tax->value;
+                return ($this->payment_type === RequestPaymentType::Advance ? ($this->totalActAmount ?? $this->total_amount) : $this->total_act_amount) * $this->tax->value;
             },
         );
     }
@@ -320,6 +320,11 @@ class RequestItem extends Model implements HasMedia
         $query->where('status', RequestItemStatus::WaitingSettlement);
     }
 
+    #[Scope]
+    protected function disbursed(Builder $query): void
+    {
+        $query->whereNot('status', RequestItemStatus::Draft)->whereNot('status', RequestItemStatus::WaitingPayment)->whereNot('status', RequestItemStatus::WaitingApproval)->whereNot('status', RequestItemStatus::Rejected);
+    }
     // #[Scope]
     // protected function settled(Builder $query): void
     // {
