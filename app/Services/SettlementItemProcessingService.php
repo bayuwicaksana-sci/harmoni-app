@@ -8,8 +8,10 @@ use App\Models\ProgramActivityItem;
 use App\Models\RequestItem;
 use App\Models\Settlement;
 use App\Models\SettlementReceipt;
+use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class SettlementItemProcessingService
 {
@@ -32,18 +34,20 @@ class SettlementItemProcessingService
 
         $results = [];
 
+        // dd($receipts);
+
         foreach ($receipts as $receiptIndex => $receipt) {
             // Find existing SettlementReceipt created by Filament via relationship
             $settlementReceiptId = $receipt['settlement_receipt_id'] ?? null;
 
             if (! $settlementReceiptId) {
-                throw new \Exception('Settlement receipt ID not found in form data');
+                throw new Exception('Settlement receipt ID not found in form data');
             }
 
             $settlementReceipt = SettlementReceipt::find($settlementReceiptId);
 
             if (! $settlementReceipt) {
-                throw new \Exception("SettlementReceipt not found: {$settlementReceiptId}");
+                throw new Exception("SettlementReceipt not found: {$settlementReceiptId}");
             }
 
             // Process request_items (existing items)
@@ -56,7 +60,7 @@ class SettlementItemProcessingService
             // Process new_request_items (unplanned items)
             foreach ($receipt['new_request_items'] ?? [] as $newRequestItem) {
                 // Skip empty new items - check if at least item description exists
-                if (empty($newRequestItem['item']) && empty($newRequestItem['coa_id'])) {
+                if (empty($newRequestItem['description']) && empty($newRequestItem['coa_id'])) {
                     continue;
                 }
 
@@ -79,14 +83,14 @@ class SettlementItemProcessingService
      */
     private function processRequestItem(array $itemData, array $receipt, Settlement $settlement, SettlementReceipt $settlementReceipt): array
     {
-        if (empty($itemData['request_item_id'])) {
-            throw new \Exception('ID Item Request diperlukan');
+        if (empty($itemData['id'])) {
+            throw new Exception('ID Item Request diperlukan');
         }
 
-        $originalRequestItem = RequestItem::find($itemData['request_item_id']);
+        $originalRequestItem = RequestItem::find($itemData['id']);
 
         if (! $originalRequestItem) {
-            throw new \Exception('Item Request tidak ditemukan');
+            throw new Exception('Item Request tidak ditemukan');
         }
 
         // Link to settlement and settlement receipt
@@ -97,8 +101,8 @@ class SettlementItemProcessingService
 
         if ($itemData['is_realized']) {
             // Set actual values
-            $originalRequestItem->act_quantity = $itemData['actual_quantity'];
-            $originalRequestItem->act_amount_per_item = $itemData['actual_amount_per_item'];
+            $originalRequestItem->act_quantity = $itemData['act_quantity'];
+            $originalRequestItem->act_amount_per_item = $itemData['act_amount_per_item'];
 
             $variance = $itemData['variance'];
 
@@ -148,38 +152,80 @@ class SettlementItemProcessingService
      */
     private function processNewItem(array $itemData, array $receipt, Settlement $settlement, SettlementReceipt $settlementReceipt): array
     {
+        // dd($itemData);
         if (empty($itemData['coa_id'])) {
-            throw new \Exception('COA diperlukan untuk item baru');
+            throw new Exception('COA diperlukan untuk item baru');
         }
 
-        $totalPrice = $itemData['qty'] * $itemData['base_price'];
+        $totalPrice = $itemData['act_quantity'] * $itemData['act_amount_per_item'];
 
         // Find program activity item ID if program activity is set
         $programActivityItemId = null;
-        if (! empty($itemData['program_activity_id']) && ! empty($itemData['item'])) {
+        if (! empty($itemData['program_activity_id']) && ! empty($itemData['description'])) {
             $programActivityItemId = ProgramActivityItem::whereProgramActivityId($itemData['program_activity_id'])
-                ->whereDescription($itemData['item'])
+                ->whereDescription($itemData['description'])
                 ->value('id');
         }
 
-        $newItem = new RequestItem([
-            'settlement_id' => $settlement->id,
-            'settlement_receipt_id' => $settlementReceipt->id,
-            'coa_id' => $itemData['coa_id'],
-            'program_activity_id' => $itemData['program_activity_id'] ?? null,
-            'program_activity_item_id' => $programActivityItemId,
-            'payment_type' => RequestPaymentType::Reimburse,
-            'act_quantity' => $itemData['qty'],
-            'unit_quantity' => $itemData['unit_qty'],
-            'act_amount_per_item' => $itemData['base_price'],
-            'description' => '[New Item] '.$itemData['item'],
-            'self_account' => true,
-            'bank_name' => Auth::user()->employee->bank_name,
-            'bank_account' => Auth::user()->employee->bank_account_number,
-            'account_owner' => Auth::user()->employee->bank_cust_name,
-            'status' => RequestItemStatus::WaitingApproval,
-            'is_unplanned' => true,
-        ]);
+        // dd($itemData);
+
+        // Check if this is an existing unplanned item or a new one
+        if ((isset($itemData['unplanned_item_id']) && ! empty($itemData['unplanned_item_id'])) || (isset($itemData['id']) && ! empty($itemData['id']))) {
+            // Update existing unplanned item
+            $newItem = RequestItem::find($itemData['id']) ?? RequestItem::find($itemData['unplanned_item_id']);
+
+            // if (! $newItem || $newItem->settlement_id !== $settlement->id) {
+            //     throw new Exception('Invalid unplanned item ID');
+            // }
+
+            Log::info($newItem);
+
+            // Update the existing item
+            $newItem->update([
+                'settlement_id' => $settlement->id,
+                'settlement_receipt_id' => $settlementReceipt->id,
+                'coa_id' => $itemData['coa_id'],
+                'program_activity_id' => $itemData['program_activity_id'] ?? null,
+                'program_activity_item_id' => $programActivityItemId,
+                'act_quantity' => $itemData['act_quantity'],
+                'unit_quantity' => $itemData['unit_quantity'],
+                'act_amount_per_item' => $itemData['act_amount_per_item'],
+                'description' => '[New Item] '.$itemData['description'],
+                'status' => RequestItemStatus::WaitingApproval,
+            ]);
+
+            if (isset($itemData['item_image']) && ! empty($itemData['item_image'])) {
+                foreach ($itemData['item_image'] as $fileIndex => $file) {
+                    $newItem->addMedia($file)->toMediaCollection('request_item_image', 'local');
+                }
+            }
+        } else {
+            // Create new unplanned item
+            $newItem = new RequestItem([
+                'settlement_id' => $settlement->id,
+                'settlement_receipt_id' => $settlementReceipt->id,
+                'coa_id' => $itemData['coa_id'],
+                'program_activity_id' => $itemData['program_activity_id'] ?? null,
+                'program_activity_item_id' => $programActivityItemId,
+                'payment_type' => RequestPaymentType::Reimburse,
+                'act_quantity' => $itemData['act_quantity'],
+                'unit_quantity' => $itemData['unit_quantity'],
+                'act_amount_per_item' => $itemData['act_amount_per_item'],
+                'description' => '[New Item] '.$itemData['description'],
+                'self_account' => true,
+                'bank_name' => Auth::user()->employee->bank_name,
+                'bank_account' => Auth::user()->employee->bank_account_number,
+                'account_owner' => Auth::user()->employee->bank_cust_name,
+                'status' => RequestItemStatus::WaitingApproval,
+                'is_unplanned' => true,
+            ]);
+
+            if (isset($itemData['item_image']) && ! empty($itemData['item_image'])) {
+                foreach ($itemData['item_image'] as $fileIndex => $file) {
+                    $newItem->addMedia($file)->toMediaCollection('request_item_image', 'local');
+                }
+            }
+        }
 
         return [
             'type' => 'new',

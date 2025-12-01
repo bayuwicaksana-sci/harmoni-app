@@ -375,6 +375,7 @@ class CreateDailyPaymentRequest extends CreateRecord
                 'amount_per_item' => $item['payment_type'] === RequestPaymentType::Advance->value ? $item['base_price'] ?? null : 0,
                 'act_amount_per_item' => $item['payment_type'] === RequestPaymentType::Reimburse->value ? $item['base_price'] ?? null : 0,
                 'attachments' => $item['attachments'],
+                'item_image' => $item['item_image'],
                 'self_account' => $item['self_account'],
                 'bank_name' => $item['bank_name'] ?? null,
                 'bank_account' => (string) $item['bank_account'] ?? null,
@@ -415,7 +416,7 @@ class CreateDailyPaymentRequest extends CreateRecord
             }
             if (count($itemImage) > 0) {
                 foreach ($itemImage as $index => $image) {
-                    $createdRequestItem->addMedia($image)->toMediaCollection('request_item_image', 'local');
+                    $createdRequestItem->addMedia($image)->toMediaCollection('request_item_image');
                 }
             }
         }

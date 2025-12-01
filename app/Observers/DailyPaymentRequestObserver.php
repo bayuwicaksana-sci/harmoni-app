@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Services\SettlementNotificationService;
 use App\Enums\DPRStatus;
 use App\Enums\SettlementStatus;
 use App\Models\DailyPaymentRequest;
@@ -50,7 +51,7 @@ class DailyPaymentRequestObserver
                 ]);
 
                 // Notify submitter
-                app(\App\Services\SettlementNotificationService::class)
+                app(SettlementNotificationService::class)
                     ->notifySubmitterOfRevision($settlement);
             }
         }

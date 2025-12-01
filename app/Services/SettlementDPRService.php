@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\DPRStatus;
+use App\Enums\RequestItemStatus;
 use App\Enums\RequestPaymentType;
 use App\Enums\SettlementStatus;
 use App\Models\DailyPaymentRequest;
@@ -55,11 +56,11 @@ class SettlementDPRService
      * Create DPR for settlement with DB transaction
      * Links existing settlement items to new DPR
      */
-    public function createDPRForSettlement(Settlement $settlement): DailyPaymentRequest
+    public function createDPRForSettlement(Settlement $settlement, ?array $items): DailyPaymentRequest
     {
-        return DB::transaction(function () use ($settlement) {
+        return DB::transaction(function () use ($settlement, $items) {
             // Collect items requiring DPR approval
-            $dprItems = $settlement->settlementItems()
+            $dprItems = $items ?? $settlement->settlementItems()
                 ->where(function ($query) {
                     $query->where('is_unplanned', true)
                         ->orWhere('payment_type', RequestPaymentType::Offset)
@@ -76,11 +77,11 @@ class SettlementDPRService
 
             // Link items to DPR
             foreach ($dprItems as $item) {
-                $item->update(['daily_payment_request_id' => $dpr->id]);
+                $item->update(['daily_payment_request_id' => $dpr->id, 'status' => RequestItemStatus::WaitingApproval]);
             }
 
             // Submit through approval workflow
-            app(\App\Services\ApprovalService::class)->submitRequest($dpr);
+            app(ApprovalService::class)->submitRequest($dpr);
 
             // Update settlement
             $settlement->update([
@@ -90,5 +91,29 @@ class SettlementDPRService
 
             return $dpr;
         });
+    }
+
+    public function finalizeSettlementWithoutDPR(
+        Settlement $settlement,
+        ?array $offsetResult = null
+    ): void {
+        // Use offset-calculated refund if available, fallback to net_settlement
+        $refundAmount = $offsetResult['total_refund_amount'] ?? $settlement->net_settlement;
+
+        if ($refundAmount > 0) {
+            // Employee owes money - need refund confirmation
+            $settlement->update([
+                'status' => SettlementStatus::WaitingRefund,
+                'refund_amount' => $refundAmount,
+            ]);
+        } else {
+            // No refund needed - wait for FO confirmation
+            $settlement->update([
+                'status' => SettlementStatus::WaitingConfirmation,
+            ]);
+
+            app(\App\Services\SettlementNotificationService::class)
+                ->notifyFinanceOperatorForConfirmation($settlement);
+        }
     }
 }

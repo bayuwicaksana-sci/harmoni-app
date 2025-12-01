@@ -56,7 +56,6 @@ class ViewSettlement extends ViewRecord
                 ->visible(fn () => $this->record->status === SettlementStatus::WaitingRefund
                     && $this->record->submitter_id === Auth::user()->employee?->id
                 ),
-
             Action::make('confirmRefund')
                 ->label('Konfirmasi Pengembalian Dana')
                 ->icon('heroicon-o-check-circle')
@@ -82,7 +81,6 @@ class ViewSettlement extends ViewRecord
                     && $this->record->getMedia('refund_receipts')->isNotEmpty()
                     && Auth::user()->employee?->jobTitle?->code === 'FO'
                 ),
-
             Action::make('confirmSettlement')
                 ->label('Konfirmasi Settlement')
                 ->icon('heroicon-o-check-circle')
@@ -108,7 +106,6 @@ class ViewSettlement extends ViewRecord
                     && $this->record->getMedia('refund_receipts')->isEmpty()
                     && Auth::user()->employee?->jobTitle?->code === 'FO'
                 ),
-
             Action::make('requestRevision')
                 ->label('Minta Revisi')
                 ->icon('heroicon-o-arrow-uturn-left')
@@ -140,7 +137,6 @@ class ViewSettlement extends ViewRecord
                     && Auth::user()->employee?->jobTitle?->code === 'FO'
                     && $this->record->generated_payment_request_id === null
                 ),
-
             EditAction::make()
                 ->label(fn () => $this->record->revision_notes
                     ? 'Edit & Resubmit'
@@ -150,16 +146,9 @@ class ViewSettlement extends ViewRecord
                     ? 'warning'
                     : 'gray'
                 )
-                ->visible(fn () => $this->record->status === SettlementStatus::Draft
+                ->visible(fn () => ($this->record->status === SettlementStatus::Draft || $this->record->status === SettlementStatus::WaitingRefund)
                     && $this->record->submitter_id === Auth::user()->employee?->id
                 ),
-        ];
-    }
-
-    public function getRelationManagers(): array
-    {
-        return [
-            \App\Filament\Resources\Settlements\RelationManagers\SettlementItemsRelationManager::class,
         ];
     }
 }

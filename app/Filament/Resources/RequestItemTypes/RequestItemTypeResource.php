@@ -17,11 +17,11 @@ class RequestItemTypeResource extends Resource
 {
     protected static ?string $model = RequestItemType::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
+    protected static string | \BackedEnum | null $navigationIcon = Heroicon::OutlinedTag;
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configuration';
+    protected static string | \UnitEnum | null $navigationGroup = 'Configuration';
 
     protected static ?string $navigationLabel = 'Request Item Types';
 

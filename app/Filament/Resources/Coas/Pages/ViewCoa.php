@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Coas\Pages;
 
 use App\Filament\Resources\Coas\CoaResource;
+use App\Filament\Resources\Coas\Widgets\CoaUsageOverview;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -14,6 +15,13 @@ class ViewCoa extends ViewRecord
     {
         return [
             EditAction::make(),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            CoaUsageOverview::class,
         ];
     }
 }

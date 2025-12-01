@@ -38,7 +38,7 @@ class CoasTable
                 TextColumn::make('coa_program_category')
                     ->label('Tipe COA')
                     ->badge()
-                    ->color(fn($state) => $state === 'Non-Program' ? 'info' : 'success'),
+                    ->color(fn ($state) => $state === 'Non-Program' ? 'info' : 'success'),
 
                 TextColumn::make('program.name')
                     ->label('Program')
@@ -55,11 +55,11 @@ class CoasTable
                     ->trueColor('success')
                     ->falseColor('danger'),
 
-                TextColumn::make('total_allocated')
-                    ->label('Total Dialokasikan')
-                    ->money('IDR')
-                    ->getStateUsing(fn($record) => $record->getTotalSpent())
-                    ->toggleable(),
+                // TextColumn::make('total_allocated')
+                //     ->label('Total Dialokasikan')
+                //     ->money('IDR')
+                //     ->getStateUsing(fn($record) => $record->getTotalSpent())
+                //     ->toggleable(),
 
                 TextColumn::make('created_at')
                     ->dateTime()

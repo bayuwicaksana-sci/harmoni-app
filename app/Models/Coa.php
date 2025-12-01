@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Coa extends Model
 {
@@ -52,10 +53,15 @@ class Coa extends Model
         return $this->hasMany(ProgramActivity::class);
     }
 
+    public function programActivityItems(): HasManyThrough
+    {
+        return $this->hasManyThrough(ProgramActivityItem::class, ProgramActivity::class);
+    }
+
     protected function coaProgramCategory(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->program ? $this->program->programCategory->name : 'Non-Program',
+            get: fn () => $this->program ? $this->program->programCategory->name : 'Non-Program',
         );
     }
 

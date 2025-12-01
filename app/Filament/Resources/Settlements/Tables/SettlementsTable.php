@@ -17,7 +17,9 @@ class SettlementsTable
             ->columns([
                 TextColumn::make('settlement_number')
                     ->searchable(),
-                TextColumn::make('submitter_id')
+                TextColumn::make('submitter.id')
+                    ->searchable(),
+                TextColumn::make('refund_amount')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('submit_date')
@@ -26,6 +28,22 @@ class SettlementsTable
                 TextColumn::make('status')
                     ->badge()
                     ->searchable(),
+                TextColumn::make('previous_status')
+                    ->searchable(),
+                TextColumn::make('generatedPaymentRequest.id')
+                    ->searchable(),
+                TextColumn::make('refund_confirmed_by')
+                    ->numeric()
+                    ->sortable(),
+                TextColumn::make('refund_confirmed_at')
+                    ->dateTime()
+                    ->sortable(),
+                TextColumn::make('confirmed_by')
+                    ->numeric()
+                    ->sortable(),
+                TextColumn::make('confirmed_at')
+                    ->dateTime()
+                    ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

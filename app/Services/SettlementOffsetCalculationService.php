@@ -112,7 +112,7 @@ class SettlementOffsetCalculationService
                     $offsetItems[] = $offsetItem;
 
                     // Mark original item as Closed since variance is being used as offset
-                    $varianceItem->status = RequestItemStatus::Closed;
+                    $varianceItem->status = RequestItemStatus::WaitingSettlementReview;
                     $varianceItem->save();
 
                     // Update tracking
@@ -154,6 +154,143 @@ class SettlementOffsetCalculationService
     }
 
     /**
+     * Calculate FIFO-based offsets per COA
+     * Exact algorithm from CreateSettlement (preserved) without recreating offset items
+     */
+    public function calculateOffsetsAfterDPRApproval(array $categorized, Settlement $settlement): array
+    {
+        $totalRefundAmount = 0;
+
+        // Get all COAs that have available funds (cancelled or variance)
+        $allCoasWithFunds = array_unique(array_merge(
+            array_keys($categorized['cancelled'] ?? []),
+            array_keys($categorized['variance'] ?? [])
+        ));
+
+        foreach ($allCoasWithFunds as $coaId) {
+            $cancelled = $categorized['cancelled'][$coaId] ?? [];
+            $variance = $categorized['variance'][$coaId] ?? [];
+            $newItems = $categorized['new'][$coaId] ?? [];
+
+            // Calculate totals
+            $cancelledTotal = collect($cancelled)->sum('amount');
+            $varianceTotal = collect($variance)->sum('variance');
+            $availableFunds = $cancelledTotal + $varianceTotal;
+
+            $newTotal = collect($newItems)->sum('total_price');
+
+            $offsetNeeded = min($availableFunds, $newTotal);
+            $offsetRemaining = $offsetNeeded;
+
+            // Allocate offsets from cancelled items first (FIFO)
+            foreach ($cancelled as $index => $cancelledData) {
+                if ($offsetRemaining <= 0) {
+                    break;
+                }
+
+                $cancelledItem = $cancelledData['item'];
+                $amount = $cancelledData['amount'];
+
+                $useAmount = min($amount, $offsetRemaining);
+
+                if ($useAmount > 0) {
+                    // Create offset request item
+                    // $offsetItem = new RequestItem([
+                    //     'settlement_id' => $settlement->id,
+                    //     'coa_id' => $coaId,
+                    //     'program_activity_id' => $cancelledItem->program_activity_id,
+                    //     'program_activity_item_id' => $cancelledItem->program_activity_item_id,
+                    //     'settling_for' => $cancelledItem->id,
+                    //     'payment_type' => RequestPaymentType::Offset,
+                    //     'act_quantity' => 1,
+                    //     'unit_quantity' => 'Lsum',
+                    //     'act_amount_per_item' => -$useAmount,
+                    //     'description' => '[Offset-Cancelled] '.$cancelledItem->description,
+                    //     'self_account' => $cancelledItem->self_account,
+                    //     'bank_name' => $cancelledItem->bank_name,
+                    //     'bank_account' => $cancelledItem->bank_account,
+                    //     'account_owner' => $cancelledItem->account_owner,
+                    //     'status' => RequestItemStatus::WaitingApproval,
+                    // ]);
+
+                    // $offsetItems[] = $offsetItem;
+
+                    // Update tracking
+                    $cancelled[$index]['remaining'] = $amount - $useAmount;
+                    $offsetRemaining -= $useAmount;
+                }
+            }
+
+            // Allocate offsets from variance items (FIFO)
+            foreach ($variance as $index => $varianceData) {
+                if ($offsetRemaining <= 0) {
+                    break;
+                }
+
+                $varianceItem = $varianceData['item'];
+                $amount = $varianceData['variance'];
+
+                $useAmount = min($amount, $offsetRemaining);
+
+                if ($useAmount > 0) {
+                    // Create offset request item
+                    // $offsetItem = new RequestItem([
+                    //     'settlement_id' => $settlement->id,
+                    //     'coa_id' => $coaId,
+                    //     'program_activity_id' => $varianceItem->program_activity_id,
+                    //     'program_activity_item_id' => $varianceItem->program_activity_item_id,
+                    //     'settling_for' => $varianceItem->id,
+                    //     'payment_type' => RequestPaymentType::Offset,
+                    //     'act_quantity' => 1,
+                    //     'unit_quantity' => 'Lsum',
+                    //     'act_amount_per_item' => -$useAmount,
+                    //     'description' => '[Offset-Selisih] '.$varianceItem->description,
+                    //     'self_account' => $varianceItem->self_account,
+                    //     'bank_name' => $varianceItem->bank_name,
+                    //     'bank_account' => $varianceItem->bank_account,
+                    //     'account_owner' => $varianceItem->account_owner,
+                    //     'status' => RequestItemStatus::WaitingApproval,
+                    // ]);
+
+                    // $offsetItems[] = $offsetItem;
+
+                    // Mark original item as Closed since variance is being used as offset
+                    // $varianceItem->status = RequestItemStatus::WaitingSettlementReview;
+                    // $varianceItem->save();
+
+                    // Update tracking
+                    $variance[$index]['remaining'] = $amount - $useAmount;
+                    $offsetRemaining -= $useAmount;
+                }
+            }
+
+            // Calculate remaining funds for refund
+            foreach ($cancelled as $cancelledData) {
+                $remaining = $cancelledData['remaining'] ?? $cancelledData['amount'];
+                if ($remaining > 0) {
+                    $totalRefundAmount += $remaining;
+                }
+            }
+
+            foreach ($variance as $varianceData) {
+                $remaining = $varianceData['remaining'] ?? $varianceData['variance'];
+                if ($remaining > 0) {
+                    $totalRefundAmount += $remaining;
+
+                    // Mark original item as Closed since remaining goes to settlement refund
+                    // $varianceItem = $varianceData['item'];
+                    // $varianceItem->status = RequestItemStatus::WaitingSettlementReview;
+                    // $varianceItem->save();
+                }
+            }
+        }
+
+        return [
+            'total_refund_amount' => $totalRefundAmount,
+        ];
+    }
+
+    /**
      * Main method to process all settlements with same-COA reconciliation first
      */
     public function processSettlement(array $categorized, array $overspentResults, Settlement $settlement): array
@@ -178,6 +315,25 @@ class SettlementOffsetCalculationService
         return [
             'offset_items' => $offsetItems,
             'reimbursement_items' => $reimbursementItems,
+            'total_refund_amount' => $totalRefundAmount,
+        ];
+    }
+
+    /**
+     * Main method to process all settlements with same-COA reconciliation first exlusive after DPR approval to * not trigger creation of reimbursement items
+     */
+    public function processSettlementAfterDPRApproval(array $categorized, array $overspentResults, Settlement $settlement): array
+    {
+        $totalRefundAmount = 0;
+
+        // Step 1: Handle same-COA internal reconciliation first
+        [$remainingOverspentResults, $remainingCategorized] = $this->handleSameCoaReconciliation($overspentResults, $categorized, $settlement);
+
+        // Step 3: Process remaining offsets (new items, remaining variance/cancelled)
+        $offsetResult = $this->calculateOffsetsAfterDPRApproval($remainingCategorized, $settlement);
+        $totalRefundAmount = $offsetResult['total_refund_amount'];
+
+        return [
             'total_refund_amount' => $totalRefundAmount,
         ];
     }

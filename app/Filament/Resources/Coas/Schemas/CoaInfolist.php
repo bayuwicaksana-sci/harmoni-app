@@ -34,14 +34,14 @@ class CoaInfolist
 
                 Section::make('Usage Statistics')
                     ->schema([
-                        TextEntry::make('total_allocated')
-                            ->label('Total Allocated/Used')
-                            ->money('IDR')
-                            ->getStateUsing(fn($record) => $record->getTotalSpent()),
+                        // TextEntry::make('total_allocated')
+                        //     ->label('Total Allocated/Used')
+                        //     ->money('IDR')
+                        //     ->getStateUsing(fn($record) => $record->getTotalSpent()),
 
                         TextEntry::make('transaction_count')
                             ->label('Number of Transactions')
-                            ->getStateUsing(fn($record) => $record->requestItems()->count()),
+                            ->getStateUsing(fn ($record) => $record->requestItems()->count()),
                     ])
                     ->columns(2),
             ]);

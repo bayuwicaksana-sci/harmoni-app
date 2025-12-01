@@ -5,14 +5,21 @@ namespace App\Models;
 use App\Enums\RequestItemStatus;
 use App\Enums\RequestPaymentType;
 use App\Enums\SettlementStatus;
+use App\Services\SettlementDPRService;
+use App\Services\SettlementFormDataService;
+use App\Services\SettlementItemProcessingService;
+use App\Services\SettlementNotificationService;
+use App\Services\SettlementOffsetCalculationService;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class Settlement extends Model implements HasMedia
 {
@@ -64,9 +71,9 @@ class Settlement extends Model implements HasMedia
 
     // Relationships
 
-    public function settlementItems(): HasMany
+    public function settlementItems(): HasManyThrough
     {
-        return $this->hasMany(RequestItem::class, 'settlement_id');
+        return $this->hasManyThrough(RequestItem::class, SettlementReceipt::class);
     }
 
     public function settlementReceipts(): HasMany
@@ -108,7 +115,7 @@ class Settlement extends Model implements HasMedia
             ->singleFile();
     }
 
-    public function registerMediaConversions(?\Spatie\MediaLibrary\MediaCollections\Models\Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('thumb')
             ->width(300)
@@ -428,9 +435,9 @@ class Settlement extends Model implements HasMedia
             ]);
         } else {
             // No refund needed - company owes or break-even
-            $this->update(['status' => SettlementStatus::WaitingConfirmation]);
+            $this->update(['status' => SettlementStatus::WaitingConfirmation, 'refund_amount' => null]);
 
-            app(\App\Services\SettlementNotificationService::class)
+            app(SettlementNotificationService::class)
                 ->notifyFinanceOperatorForConfirmation($this);
         }
     }
@@ -491,15 +498,76 @@ class Settlement extends Model implements HasMedia
     public function resubmit(): void
     {
         DB::transaction(function () {
-            $dprService = app(\App\Services\SettlementDPRService::class);
+            $dprService = app(SettlementDPRService::class);
 
             // Clear revision notes
             $revisionData = ['revision_notes' => null];
 
+            $settlementReceipts = $this->settlementReceipts()->with(['requestItems'])->get()->toArray();
+
+            foreach ($settlementReceipts as $receiptIndex => $receipt) {
+                $receipt['requestItems'] = $receipt['request_items'];
+
+                $settlementReceipts[$receiptIndex]['requestItems'] = $receipt['request_items'];
+                unset($settlementReceipts[$receiptIndex]['request_items']);
+            }
+
+            // dd(['settlementReceipts' => $settlementReceipts]);
+
             // Check if settlement needs DPR
             if ($dprService->requiresDPR($this)) {
                 // Create DPR and route to WaitingDPRApproval
-                $dpr = $dprService->createDPRForSettlement($this);
+                // $dpr = $dprService->createDPRForSettlement($this);
+
+                $formDataService = app(SettlementFormDataService::class);
+                $structuredData = $formDataService->extractFormData(['settlementReceipts' => $settlementReceipts]);
+
+                // Service 2: Process items from receipts
+                $itemProcessor = app(\App\Services\SettlementItemProcessingService::class);
+                $results = $itemProcessor->processReceipts(
+                    $structuredData['receipts'],
+                    $this,
+                    false // create mode
+                );
+
+                // Service 3: Categorize items
+                $categorized = $itemProcessor->categorizeItems(collect($results));
+
+                // Service 4: Process settlement with same-COA reconciliation first
+                $offsetService = app(\App\Services\SettlementOffsetCalculationService::class);
+                $overspentResults = $categorized['overspent'] ? collect($categorized['overspent'])->flatten(1)->toArray() : [];
+
+                // Use the new processSettlement method that handles same-COA internal reconciliation
+                $processResult = $offsetService->processSettlement($categorized, $overspentResults, $this);
+
+                // Collect all DPR items (offsets + reimbursements + new items)
+                $dprItems = array_merge(
+                    $processResult['offset_items'],
+                    $processResult['reimbursement_items']
+                );
+
+                // Add new items (flatten COA groups)
+                foreach ($categorized['new'] ?? [] as $coaId => $newItems) {
+                    foreach ($newItems as $newResult) {
+                        $dprItems[] = $newResult['item'];
+                    }
+                }
+
+                // Check if DPR is needed using the new service method
+                // $dprService = app(\App\Services\SettlementDPRService::class);
+                $requiresDPR = $dprService->requiresDPRFromResults([
+                    'categorized' => $categorized,
+                    'reimbursement_items' => $processResult['reimbursement_items'],
+                    'offset_items' => $processResult['offset_items'],
+                ]);
+
+                // Create DPR if there are items requiring approval
+                if ($requiresDPR && ! empty($dprItems)) {
+                    $dprService->createDPRForSettlement($this, $dprItems);
+                } else {
+                    // No DPR needed - set final status based on processed refund amount
+                    $dprService->finalizeSettlementWithoutDPR($this, $processResult);
+                }
 
                 // Status already set by service
                 $revisionData['previous_status'] = null;
@@ -515,7 +583,7 @@ class Settlement extends Model implements HasMedia
 
                     $this->update($revisionData);
 
-                    app(\App\Services\SettlementNotificationService::class)
+                    app(SettlementNotificationService::class)
                         ->notifyFinanceOperatorForConfirmation($this);
 
                 } elseif ($this->previous_status === SettlementStatus::WaitingRefund->value) {
@@ -535,7 +603,7 @@ class Settlement extends Model implements HasMedia
 
                     $this->update($revisionData);
 
-                    app(\App\Services\SettlementNotificationService::class)
+                    app(SettlementNotificationService::class)
                         ->notifyFinanceOperatorForConfirmation($this);
                 }
             }
@@ -549,8 +617,8 @@ class Settlement extends Model implements HasMedia
     public function calculateRefundAmount(): float
     {
         // Get settlement items categorized by type
-        $itemProcessor = app(\App\Services\SettlementItemProcessingService::class);
-        $offsetService = app(\App\Services\SettlementOffsetCalculationService::class);
+        $itemProcessor = app(SettlementItemProcessingService::class);
+        $offsetService = app(SettlementOffsetCalculationService::class);
 
         // Load all settlement items
         $items = $this->settlementItems()->get();
@@ -583,7 +651,7 @@ class Settlement extends Model implements HasMedia
 
         // Process settlement with same-COA reconciliation first
         $overspentResults = $categorized['overspent'] ? collect($categorized['overspent'])->flatten(1)->toArray() : [];
-        $processResult = $offsetService->processSettlement($categorized, $overspentResults, $this);
+        $processResult = $offsetService->processSettlementAfterDPRApproval($categorized, $overspentResults, $this);
 
         return max(0, $processResult['total_refund_amount'] ?? 0);
     }
