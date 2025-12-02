@@ -64,7 +64,7 @@ class SettlementFormDataService
                     continue;
                 }
 
-                if (($item['is_unplanned'] === false || $item['is_unplanned'] === null || ! isset($item['is_unplanned'])) && $item['id'] !== 'new') {
+                if ((! isset($item['is_unplanned']) || $item['is_unplanned'] === null || $item['is_unplanned'] === false) && $item['id'] !== 'new') {
                     // Fetch the RequestItem from database to get accurate data
                     $requestItem = RequestItem::find($item['id']);
 

@@ -55,6 +55,7 @@ class RequestItem extends Model implements HasMedia
         'tax_type',
         'tax_rate',
         'item_type_name',
+        'due_date',
         'realization_date',
         'settled_at',
         'self_account',
@@ -85,6 +86,7 @@ class RequestItem extends Model implements HasMedia
         'status' => RequestItemStatus::class,
         'is_taxed' => 'boolean',
         'is_unplanned' => 'boolean',
+        'due_date' => 'date',
         'realization_date' => 'date',
     ];
 
@@ -209,7 +211,7 @@ class RequestItem extends Model implements HasMedia
                     return null;
                 }
 
-                return ($this->payment_type === RequestPaymentType::Advance ? ($this->totalActAmount ?? $this->total_amount) : $this->total_act_amount) * $this->tax->value;
+                return ($this->payment_type === RequestPaymentType::Advance ? ($this->total_act_amount > 0 ? $this->total_act_amount : $this->total_amount) : $this->total_act_amount) * $this->tax->value;
             },
         );
     }

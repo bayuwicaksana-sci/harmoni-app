@@ -276,10 +276,13 @@ class Settlement extends Model implements HasMedia
             $coaGroups[$coaId]['items'][] = [
                 'type' => 'new_unplanned',
                 'description' => $item->description,
-                'quantity' => $item->act_quantity,
+                // 'request_quantity' => $item->quantity,
+                'actual_quantity' => $item->act_quantity,
                 'unit' => $item->unit_quantity,
-                'price' => $item->act_amount_per_item,
-                'total' => $totalPrice,
+                // 'request_price' => $item->amount_per_item,
+                'actual_price' => $item->act_amount_per_item,
+                // 'request_total' => $item->total_amount,
+                'actual_total' => $totalPrice,
                 'status' => $item->status->getLabel(),
             ];
         }
@@ -322,8 +325,8 @@ class Settlement extends Model implements HasMedia
                 return new HtmlString('<div class="flex justify-between items-center gap-4"><span>Rp</span><span class="tabular-nums">'.number_format($amount, 2, ',', '.').'</span></div>');
             };
 
+            // 'COA' => "{$group['coa_name']} ({$group['coa_code']})",
             $group['summary'] = [
-                'COA' => "{$group['coa_name']} ({$group['coa_code']})",
                 'Anggaran Disetujui' => $formatMoney($group['approved_budget']),
                 'Total Dibelanjakan' => $formatMoney($group['spent_budget']),
                 'Item Dibatalkan' => $formatMoney($group['cancelled_budget']),

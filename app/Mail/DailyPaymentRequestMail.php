@@ -46,8 +46,8 @@ abstract class DailyPaymentRequestMail extends Mailable
                 'amountPerItem' => $item->payment_type === RequestPaymentType::Advance ? $this->formatCurrency($item->amount_per_item) : $this->formatCurrency($item->act_amount_per_item),
                 'subtotal' => $item->payment_type === RequestPaymentType::Advance ? $this->formatCurrency($item->total_amount) : $this->formatCurrency($item->total_act_amount),
                 'attachments' => $item->getMedia('request_item_attachments') ?? [],
-                'taxMethod' => $item->tax_method ?? null,
-                'taxType' => $item->tax_type ?? null,
+                'taxMethod' => $item->tax_method ? $item->tax_method->getLabel() : null,
+                'taxType' => $item->tax ? $item->tax->name : null,
                 'taxAmount' => $item->tax_amount ? $this->formatCurrency($item->tax_amount) : null,
                 'netAmount' => $item->net_amount ? $this->formatCurrency($item->net_amount) : null,
             ];

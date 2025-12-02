@@ -9,6 +9,7 @@ use App\Models\Coa;
 use App\Models\ProgramActivity;
 use App\Models\ProgramActivityItem;
 use App\Models\RequestItem;
+use Filament\Actions\Action;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -17,6 +18,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\Textarea;
@@ -28,6 +30,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Support\RawJs;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
@@ -335,10 +338,16 @@ class RequestItemsRelationManager extends RelationManager
                     ->money(currency: 'IDR', locale: 'id'),
                 SpatieMediaLibraryImageColumn::make('attachments')
                     ->label('Lampiran')
-                    ->collection('request_item_attachments'),
+                    ->collection('request_item_attachments')
+                    ->placeholder('N/A'),
                 SpatieMediaLibraryImageColumn::make('item_image')
                     ->label('Foto Item/Produk')
-                    ->collection('request_item_image'),
+                    ->collection('request_item_image')
+                    ->placeholder('N/A'),
+                TextColumn::make('due_date')
+                    ->label('Tenggat Waktu Realisasi')
+                    ->date('j M Y', 'Asia/Jakarta')
+                    ->placeholder('N/A'),
                 ToggleColumn::make('is_taxed')
                     ->disabled(fn ($record) => $record->status === RequestItemStatus::Closed || $record->status === RequestItemStatus::WaitingSettlement || $record->status === RequestItemStatus::Cancelled || $record->status === RequestItemStatus::Rejected)
                     ->label('Dikenai Pajak?')
@@ -364,6 +373,32 @@ class RequestItemsRelationManager extends RelationManager
                 // AssociateAction::make(),
             ])
             ->recordActions([
+                Action::make('updateDueDate')
+                    ->icon(Heroicon::OutlinedCalendar)
+                    ->label('Ubah Tenggat Waktu')
+                    ->modalWidth(Width::ExtraSmall)
+                    ->fillForm(fn (RequestItem $record): array => [
+                        'due_date' => $record->due_date,
+                        'minDate' => $record->dailyPaymentRequest->updated_at->addDays(3)->toDateString(),
+                        'maxDate' => $record->dailyPaymentRequest->updated_at->addDays(14)->toDateString(),
+                    ])
+                    ->schema([
+                        DatePicker::make('due_date')
+                            ->label('Atur Tenggat Waktu Baru')
+                            ->displayFormat('j M Y')
+                            ->timezone('Asia/Jakarta')
+                            ->locale('id')
+                            ->native(false)
+                            ->minDate(fn (Get $get) => $get('minDate'))
+                            ->maxDate(fn (Get $get) => $get('maxDate'))
+                            ->required(),
+                    ])
+                    ->action(function (array $data, RequestItem $record): void {
+                        $record->due_date = $data['due_date'];
+                        $record->save();
+                    })
+                    ->successNotificationTitle('Tenggat Waktu Diubah')
+                    ->hidden(fn ($record) => ($record->payment_type === RequestPaymentType::Reimburse || Auth::user()->employee->jobTitle->code !== 'FO') && ! ($record->status === RequestItemStatus::WaitingSettlement || $record->status === RequestItemStatus::WaitingSettlementReview)),
                 ViewAction::make()
                     ->modalWidth(Width::SevenExtraLarge),
                 EditAction::make()

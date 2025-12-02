@@ -52,6 +52,11 @@ class DailyPaymentRequestInfolist
                             ->label('Total Nominal Request')
                             ->belowContent('(Tidak termasuk pajak)')
                             ->money('IDR'),
+                        TextEntry::make('total_transfer_amount')
+                            // ->getStateUsing(fn ($record) => $record->total_request_amount)
+                            ->label('Total Nominal Transfer')
+                            ->belowContent('(Termasuk pajak)')
+                            ->money('IDR'),
                     ])
                     ->columns(4)
                     ->columnSpanFull(),

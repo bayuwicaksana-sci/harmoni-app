@@ -5,9 +5,9 @@ namespace App\Filament\Resources\DailyPaymentRequests\Pages;
 use App\Enums\ApprovalAction;
 use App\Enums\DPRStatus;
 use App\Enums\RequestItemStatus;
-use Exception;
 use App\Filament\Resources\DailyPaymentRequests\DailyPaymentRequestResource;
 use App\Services\ApprovalService;
+use Exception;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -24,7 +24,7 @@ class ViewDailyPaymentRequest extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make()->visible(fn() => $this->record->canBeEdited()),
+            EditAction::make()->visible(fn () => $this->record->canBeEdited()),
             Action::make('submit')
                 ->label('Submit for Approval')
                 ->icon(Heroicon::OutlinedPaperAirplane)
@@ -34,15 +34,15 @@ class ViewDailyPaymentRequest extends ViewRecord
                     try {
                         $validation = $this->record->validateForSubmission();
 
-                        if (!$validation['valid']) {
+                        if (! $validation['valid']) {
                             // Format errors for better readability
                             $errorList = collect($validation['errors'])
-                                ->map(fn($error) => "• {$error}")
+                                ->map(fn ($error) => "• {$error}")
                                 ->implode("\n");
 
                             Notification::make()
                                 ->title('Request Gagal Diajukan')
-                                ->body("Perbaiki data berikut sebelum kembali mengajukan:\n\n" . $errorList)
+                                ->body("Perbaiki data berikut sebelum kembali mengajukan:\n\n".$errorList)
                                 ->danger()
                                 ->persistent()
                                 ->send();
@@ -76,9 +76,9 @@ class ViewDailyPaymentRequest extends ViewRecord
                             ->send();
                     }
                 })
-                ->visible(fn() => $this->record->status === DPRStatus::Draft && $this->record->requester->id === Auth::user()->employee->id),
+                ->visible(fn () => $this->record->status === DPRStatus::Draft && $this->record->requester->id === Auth::user()->employee->id),
             Action::make('approve')
-                ->label(fn() => Auth::user()->employee->jobTitle->code === 'FO' ? 'Submit ke Head of Finance' : 'Approve')
+                ->label(fn () => Auth::user()->employee->jobTitle->code === 'FO' ? 'Submit ke Head of Finance' : 'Approve')
                 ->icon(Heroicon::OutlinedCheckCircle)
                 ->color('success')
                 ->schema([
@@ -108,7 +108,9 @@ class ViewDailyPaymentRequest extends ViewRecord
                 })
                 ->visible(function () {
                     $employee = Auth::user()?->employee;
-                    if (!$employee) return false;
+                    if (! $employee) {
+                        return false;
+                    }
 
                     $latestApprovalSeq = $this->record->approvalHistories()
                         ->where('action', ApprovalAction::Pending)
@@ -123,13 +125,13 @@ class ViewDailyPaymentRequest extends ViewRecord
                         ->exists() && $latestApprovalSeq === $approverSeq;
                 }),
             Action::make('reject')
-                ->label('Reject')
+                ->label(fn () => Auth::user()->employee->jobTitle->code === 'FO' ? 'Cancel' : 'Reject')
                 ->icon(Heroicon::OutlinedXCircle)
                 ->color('danger')
                 ->requiresConfirmation()
                 ->schema([
                     Textarea::make('notes')
-                        ->label('Alasan Penolakan')
+                        ->label(fn () => Auth::user()->employee->jobTitle->code === 'FO' ? 'Alasan Pembatalan' : 'Alasan Penolakan')
                         ->required()
                         ->rows(3),
                 ])
@@ -155,7 +157,9 @@ class ViewDailyPaymentRequest extends ViewRecord
                 })
                 ->visible(function () {
                     $employee = Auth::user()?->employee;
-                    if (!$employee) return false;
+                    if (! $employee) {
+                        return false;
+                    }
 
                     $latestApprovalSeq = $this->record->approvalHistories()
                         ->where('action', ApprovalAction::Pending)
@@ -167,10 +171,11 @@ class ViewDailyPaymentRequest extends ViewRecord
                     return $this->record->approvalHistories()
                         ->where('approver_id', $employee->id)
                         ->where('action', ApprovalAction::Pending)
-                        ->exists() && $employee->jobTitle->code !== 'FO' && $latestApprovalSeq === $approverSeq;
+                        ->exists() && $latestApprovalSeq === $approverSeq;
+                    // ->exists() && $employee->jobTitle->code !== 'FO' && $latestApprovalSeq === $approverSeq;
                 }),
             DeleteAction::make()
-                ->visible(fn() => $this->record->isDraft() && $this->record->requester->id === Auth::user()->employee->id),
+                ->visible(fn () => $this->record->isDraft() && $this->record->requester->id === Auth::user()->employee->id),
         ];
     }
 }

@@ -164,8 +164,11 @@ class EditSettlement extends EditRecord
                 ),
 
             ViewAction::make(),
-            // DeleteAction::make()
-            //     ->visible(fn () => $this->record->status === SettlementStatus::Draft),
+            DeleteAction::make()
+                ->visible(fn () => ($this->record->status === SettlementStatus::Draft || $this->record->status === SettlementStatus::WaitingRefund)
+                    && $this->record->submitter_id === Auth::user()->employee?->id
+                    && ! ($this->record->generatedPaymentRequest !== null)
+                ),
         ];
     }
 

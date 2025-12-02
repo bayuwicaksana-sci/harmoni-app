@@ -87,6 +87,7 @@ class EditSettlementReceipt
                             $originalItem->act_amount_per_item = $data['act_amount_per_item'];
                             $originalItem->settlement_id = $record->settlement_id;
                             $originalItem->settlement_receipt_id = $record->id;
+                            $originalItem->status = ! $data['is_realized'] || $data['act_quantity'] <= 0.00 || $data['act_amount_per_item'] <= 0.00 ? RequestItemStatus::Cancelled : $originalItem->status;
 
                             $originalItem->save();
 

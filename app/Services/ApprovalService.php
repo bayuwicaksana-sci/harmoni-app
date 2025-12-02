@@ -153,7 +153,7 @@ class ApprovalService
             $request->update(['status' => DPRStatus::Approved]);
             $request->requestItems()->wherePaymentType(RequestPaymentType::Reimburse)->update(['status' => RequestItemStatus::Closed]);
             $request->requestItems()->wherePaymentType(RequestPaymentType::Offset)->update(['status' => RequestItemStatus::Closed]);
-            $request->requestItems()->wherePaymentType(RequestPaymentType::Advance)->update(['status' => RequestItemStatus::WaitingSettlement]);
+            $request->requestItems()->wherePaymentType(RequestPaymentType::Advance)->update(['status' => RequestItemStatus::WaitingSettlement, 'due_date' => now()->addDays(3)->toDateString()]);
         }
 
         $notificationService = app(DPRNotificationService::class);

@@ -56,6 +56,8 @@ return new class extends Migration
             $table->decimal('tax_rate', 5, 4)->nullable();
             $table->string('item_type_name', 100)->nullable();
 
+            $table->date('due_date')->nullable();
+            $table->date('realization_date')->nullable();
             $table->timestamp('settled_at')->nullable();
             $table->timestamps();
             $table->softDeletes();

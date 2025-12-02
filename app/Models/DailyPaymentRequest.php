@@ -137,6 +137,17 @@ class DailyPaymentRequest extends Model implements HasMedia
         );
     }
 
+    protected function totalTransferAmount(): Attribute
+    {
+        return new Attribute(
+            get: function () {
+                $total = $this->requestItems->where('payment_type', RequestPaymentType::Advance)->sum('net_amount') + $this->requestItems->where('payment_type', RequestPaymentType::Reimburse)->sum('net_amount') + $this->requestItems->where('payment_type', RequestPaymentType::Offset)->sum('net_amount');
+
+                return $total > 0 ? $total : 0;
+            }
+        );
+    }
+
     // public function requestAttachments(): HasMany
     // {
     //     return $this->hasMany(RequestAttachment::class);

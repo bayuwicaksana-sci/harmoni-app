@@ -164,7 +164,7 @@
                             <div class="item-row">
                                 <span class="item-label">Pajak</span>
                                 <span class="item-value">{{ $item->tax->name }} (Ditanggung oleh:
-                                    {{ $item->tax_method }}) -
+                                    {{ \App\Enums\TaxMethod::from($item->tax_method->value)->getLabel() }}) -
                                     {{ $this->formatCurrency($item->tax_amount) }}</span>
                             </div>
 
@@ -174,10 +174,22 @@
                             </div>
                         @endif
 
-                        @if (!empty($item->getMedia('request_item_attachments')))
-                            @foreach ($item->getMedia('request_item_attachments') as $attachment)
+                        @if ($item->notes)
+                            <div class="item-row">
+                                <span class="item-label">Note Requester</span>
+                                <span class="item-value"
+                                    style="font-style: italic; color: gray;">{{ $item->notes }}</span>
+                            </div>
+                        @endif
+
+                        @if (!empty($item->getMedia('request_item_attachments')) || !empty($item->getMedia('request_item_image')))
+                            @foreach ($item->getMedia('request_item_attachments') ?? [] as $attachment)
                                 <img style="max-width: 100%;max-height: 400px;width: auto;height: auto;object-fit: contain;"
                                     src="{{ $attachment->getTemporaryUrl(Carbon\Carbon::now()->addMinutes(5)) }}">
+                            @endforeach
+                            @foreach ($item->getMedia('request_item_image') ?? [] as $itemImage)
+                                <img style="max-width: 100%;max-height: 400px;width: auto;height: auto;object-fit: contain;"
+                                    src="{{ $itemImage->getTemporaryUrl(Carbon\Carbon::now()->addMinutes(5)) }}">
                             @endforeach
                         @endif
 
