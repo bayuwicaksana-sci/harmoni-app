@@ -7,7 +7,6 @@ use App\Filament\Resources\DailyPaymentRequests\DailyPaymentRequestResource;
 use Filament\Infolists\Components\KeyValueEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
-use Filament\Infolists\Components\SpatieMediaLibraryImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
@@ -18,6 +17,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\IconPosition;
 use Filament\Support\Enums\TextSize;
+use Njxqlus\Filament\Components\Infolists\LightboxSpatieMediaLibraryImageEntry;
 
 class SettlementInfolist
 {
@@ -176,7 +176,7 @@ class SettlementInfolist
                         return 'gray';
                     })
                     ->schema([
-                        Grid::make(3)
+                        Grid::make(2)
                             ->schema([
                                 TextEntry::make('total_amount_to_return')
                                     ->label('Dikembalikan ke Finance')
@@ -196,23 +196,23 @@ class SettlementInfolist
                                     ->icon('heroicon-o-arrow-right-circle')
                                     ->iconPosition(IconPosition::Before),
 
-                                TextEntry::make('net_settlement')
-                                    ->label('Net Settlement')
-                                    ->helperText(function ($state) {
-                                        if ($state > 0) {
-                                            return 'Positif = Employee Owes Company';
-                                        } elseif ($state < 0) {
-                                            return 'Negatif = Company Owes Employee';
-                                        }
+                                // TextEntry::make('net_settlement')
+                                //     ->label('Net Settlement')
+                                //     ->helperText(function ($state) {
+                                //         if ($state > 0) {
+                                //             return 'Positif = Employee Owes Company';
+                                //         } elseif ($state < 0) {
+                                //             return 'Negatif = Company Owes Employee';
+                                //         }
 
-                                        return 'Zero = Break Even';
-                                    })
-                                    ->money('IDR', locale: 'id')
-                                    ->size(TextSize::Large)
-                                    ->weight(FontWeight::ExtraBold)
-                                    ->color(fn ($state) => $state > 0 ? 'warning' : ($state < 0 ? 'success' : 'gray'))
-                                    ->icon(fn ($state) => $state > 0 ? 'heroicon-o-arrow-left-circle' : ($state < 0 ? 'heroicon-o-arrow-right-circle' : 'heroicon-o-check-circle'))
-                                    ->iconPosition(IconPosition::Before),
+                                //         return 'Zero = Break Even';
+                                //     })
+                                //     ->money('IDR', locale: 'id')
+                                //     ->size(TextSize::Large)
+                                //     ->weight(FontWeight::ExtraBold)
+                                //     ->color(fn ($state) => $state > 0 ? 'warning' : ($state < 0 ? 'success' : 'gray'))
+                                //     ->icon(fn ($state) => $state > 0 ? 'heroicon-o-arrow-left-circle' : ($state < 0 ? 'heroicon-o-arrow-right-circle' : 'heroicon-o-check-circle'))
+                                //     ->iconPosition(IconPosition::Before),
                             ]),
                     ])
                     ->columnSpanFull()
@@ -382,10 +382,14 @@ class SettlementInfolist
                                                     ->size(TextSize::Large)
                                                     ->weight(FontWeight::Bold),
 
-                                                SpatieMediaLibraryImageEntry::make('attachment')
+                                                LightboxSpatieMediaLibraryImageEntry::make('attachment')
                                                     ->collection('settlement_receipt_attachments')
                                                     ->label('Lampiran Kwitansi')
-                                                    ->visible(fn ($record) => $record->getMedia('settlement_receipt_attachments')->isNotEmpty()),
+                                                    ->visible(fn ($record) => $record->getMedia('settlement_receipt_attachments')->isNotEmpty())
+                                                    ->slideZoomable(true)
+                                                    ->slideDraggable(true)
+                                                    ->slideWidth('auto')
+                                                    ->slideHeight('auto'),
                                             ]),
 
                                         // Items in this Receipt - TABLE FORMAT
@@ -618,10 +622,14 @@ class SettlementInfolist
                                                     ->icon('heroicon-o-calendar')
                                                     ->iconPosition(IconPosition::Before),
                                             ]),
-                                        SpatieMediaLibraryImageEntry::make('refund_receipts')
+                                        LightboxSpatieMediaLibraryImageEntry::make('refund_receipts')
                                             ->collection('refund_receipts')
                                             ->label('Bukti Transfer Pengembalian Dana')
                                             ->visible(fn ($record) => $record->getMedia('refund_receipts')->isNotEmpty())
+                                            ->slideZoomable(true)
+                                            ->slideDraggable(true)
+                                            ->slideWidth('auto')
+                                            ->slideHeight('auto')
                                             ->columnSpanFull(),
                                     ])
                                     ->columnSpanFull(),

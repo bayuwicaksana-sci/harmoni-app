@@ -27,7 +27,7 @@ class ListDailyPaymentRequests extends ListRecords
         return [
             'all' => Tab::make('Semua Request')->modifyQueryUsing(function (Builder $query) {
                 if (Auth::user()->employee->jobTitle->jobLevel->level === 5 || Auth::user()->employee->jobTitle->department->code === 'FIN') {
-                    $query->where('status', DPRStatus::Pending);
+
                 } else {
                     $query->where('status', DPRStatus::Pending)->where('requester_id', Auth::user()->employee->id);
                 }

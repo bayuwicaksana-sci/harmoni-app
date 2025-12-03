@@ -336,6 +336,9 @@ class RequestItemsRelationManager extends RelationManager
                     ->label('Total Harga Item')
                     ->numeric()
                     ->money(currency: 'IDR', locale: 'id'),
+                TextColumn::make('net_amount')
+                    ->label('Nilai Setelah Pajak')
+                    ->money(currency: 'IDR', locale: 'id'),
                 SpatieMediaLibraryImageColumn::make('attachments')
                     ->label('Lampiran')
                     ->collection('request_item_attachments')

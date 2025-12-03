@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "56cdbfe1f11acd6d19ded0d72cd5d9ab",
+    "content-hash": "e155cfc817cb2a4105812c509f50b171",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -4681,6 +4681,87 @@
                 "source": "https://github.com/nikic/PHP-Parser/tree/v5.6.2"
             },
             "time": "2025-10-21T19:32:17+00:00"
+        },
+        {
+            "name": "njxqlus/filament-lightbox",
+            "version": "5.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/njxqlus/filament-lightbox.git",
+                "reference": "995b8f0447d38558bfeda6ba092d022df63d2d29"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/njxqlus/filament-lightbox/zipball/995b8f0447d38558bfeda6ba092d022df63d2d29",
+                "reference": "995b8f0447d38558bfeda6ba092d022df63d2d29",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^4.0",
+                "illuminate/contracts": "^12.0",
+                "php": "^8.3",
+                "spatie/laravel-package-tools": "^1.15.0"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.7.2",
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^8.8.2",
+                "orchestra/testbench": "^10.0",
+                "pestphp/pest": "^4.0",
+                "pestphp/pest-plugin-arch": "^4.0",
+                "pestphp/pest-plugin-laravel": "^4.0",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan": "^2.1.28",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "FilamentLightbox": "Njxqlus\\Filament\\Components\\Facades\\FilamentLightbox"
+                    },
+                    "providers": [
+                        "Njxqlus\\Filament\\Components\\FilamentLightboxServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Njxqlus\\Filament\\Components\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Mikael Ahabalyants",
+                    "email": "njxqlus@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Lightbox entry for Filament",
+            "homepage": "https://github.com/njxqlus/filament-lightbox",
+            "keywords": [
+                "filament",
+                "filament-lightbox",
+                "laravel",
+                "lightbox",
+                "njxqlus"
+            ],
+            "support": {
+                "issues": "https://github.com/njxqlus/filament-lightbox/issues",
+                "source": "https://github.com/njxqlus/filament-lightbox"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/njxqlus",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-09-26T03:03:34+00:00"
         },
         {
             "name": "nunomaduro/termwind",

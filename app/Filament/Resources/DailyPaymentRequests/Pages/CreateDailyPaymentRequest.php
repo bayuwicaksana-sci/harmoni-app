@@ -110,7 +110,7 @@ class CreateDailyPaymentRequest extends CreateRecord
                                                     ->size(TextSize::Large)
                                                     ->weight(FontWeight::ExtraBold)
                                                     ->grow(false),
-                                            ]),
+                                            ])->from('sm'),
                                             RepeatableEntry::make('requestedItems')
                                                 ->hiddenLabel()
                                                 ->contained(false)

@@ -168,7 +168,7 @@ class SettlementFormDataService
 
             // Validate: At least one request item is required per receipt
             if (empty($processedReceipt['request_items'])) {
-                throw new Exception('Setiap bukti kwitansi harus memiliki minimal 1 Item Request');
+                throw new Exception('Setiap bukti kwitansi harus memiliki minimal 1 Item Request dari Payment Request yang sudah disetujui');
             }
 
             $processedReceipts[] = $processedReceipt;

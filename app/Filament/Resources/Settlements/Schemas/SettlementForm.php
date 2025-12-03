@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Settlements\Schemas;
 
-use EditSettlementReceipt;
+use EditSettlementForm;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Schema;
@@ -48,7 +48,7 @@ class SettlementForm
                         ->readOnly()
                         ->dehydrated(false),
                 ]),
-            EditSettlementReceipt::make(),
+            EditSettlementForm::make(),
         ];
     }
 

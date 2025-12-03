@@ -1,10 +1,12 @@
 <?php
 
 use App\Enums\RequestItemStatus;
+use App\Filament\Resources\Settlements\Pages\CreateSettlement;
 use App\Models\Coa;
 use App\Models\ProgramActivity;
 use App\Models\ProgramActivityItem;
 use App\Models\RequestItem;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
@@ -19,7 +21,7 @@ use Filament\Support\RawJs;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
-class CreateSettlementReceipt
+class CreateSettlementForm
 {
     public static function make(): Repeater
     {
@@ -31,16 +33,16 @@ class CreateSettlementReceipt
             ->itemNumbers()
             ->columns(12)
             ->columnSpanFull()
-                // ->addAction(
-                //     fn (Action $action) => $action->after(function (Get $get, Set $set) {
-                //         CreateSettlement::recalculateFinancialSummary($get, $set, '');
-                //     })
-                // )
-                // ->deleteAction(
-                //     fn (Action $action) => $action->after(function (Get $get, Set $set) {
-                //         CreateSettlement::recalculateFinancialSummary($get, $set, '');
-                //     })
-                // )
+            ->addAction(
+                fn (Action $action) => $action->after(function (Get $get, Set $set) {
+                    CreateSettlement::recalculateFinancialSummary($get, $set, '');
+                })
+            )
+            ->deleteAction(
+                fn (Action $action) => $action->after(function (Get $get, Set $set) {
+                    CreateSettlement::recalculateFinancialSummary($get, $set, '');
+                })
+            )
                 // ->extraItemActions([
                 //     Action::make('sendEmail')
                 //         ->icon(Heroicon::Envelope),
@@ -75,16 +77,16 @@ class CreateSettlementReceipt
                     //         RequestItem::upd
                     //     }
                     // })
-                    // ->addAction(
-                    //     fn (Action $action) => $action->after(function (Get $get, Set $set) {
-                    //         CreateSettlement::recalculateFinancialSummary($get, $set, '../../');
-                    //     })
-                    // )
-                    // ->deleteAction(
-                    //     fn (Action $action) => $action->after(function (Get $get, Set $set) {
-                    //         CreateSettlement::recalculateFinancialSummary($get, $set, '../../');
-                    //     })
-                    // )
+                    ->addAction(
+                        fn (Action $action) => $action->after(function (Get $get, Set $set) {
+                            CreateSettlement::recalculateFinancialSummary($get, $set, '../../');
+                        })
+                    )
+                    ->deleteAction(
+                        fn (Action $action) => $action->after(function (Get $get, Set $set) {
+                            CreateSettlement::recalculateFinancialSummary($get, $set, '../../');
+                        })
+                    )
                     ->extraAttributes([
                         'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
                     ])
@@ -186,42 +188,42 @@ class CreateSettlementReceipt
                                 }
 
                                 // Recalculate financial summary
-                                // $rootData = $get('../../../../') ?? [];
-                                // $receipts = $rootData['settlementReceipts'] ?? [];
+                                $rootData = $get('../../../../') ?? [];
+                                $receipts = $rootData['settlementReceipts'] ?? [];
 
-                                // $approvedAmount = 0;
-                                // $cancelledAmount = 0;
-                                // $spentAmount = 0;
+                                $approvedAmount = 0;
+                                $cancelledAmount = 0;
+                                $spentAmount = 0;
 
-                                // foreach ($receipts as $receipt) {
-                                //     foreach ($receipt['requestItems'] ?? [] as $item) {
-                                //         // Check if this is current item
-                                //         $isCurrentItem = ($item['id'] ?? null) === $state;
+                                foreach ($receipts as $receipt) {
+                                    foreach ($receipt['requestItems'] ?? [] as $item) {
+                                        // Check if this is current item
+                                        $isCurrentItem = ($item['id'] ?? null) === $state;
 
-                                //         $requestTotal = $isCurrentItem ? $currentRequestTotal : $parseMoney($item['request_total_price'] ?? '0');
-                                //         $approvedAmount += $requestTotal;
+                                        $requestTotal = $isCurrentItem ? $currentRequestTotal : $parseMoney($item['request_total_price'] ?? '0');
+                                        $approvedAmount += $requestTotal;
 
-                                //         $isRealized = $item['is_realized'] ?? true;
-                                //         if (! $isRealized) {
-                                //             $cancelledAmount += $requestTotal;
-                                //         } else {
-                                //             $spentAmount += $parseMoney($item['actual_total_price'] ?? '0');
-                                //         }
-                                //     }
+                                        $isRealized = $item['is_realized'] ?? true;
+                                        if (! $isRealized) {
+                                            $cancelledAmount += $requestTotal;
+                                        } else {
+                                            $spentAmount += $parseMoney($item['actual_total_price'] ?? '0');
+                                        }
+                                    }
 
-                                //     // // new_request_items only affects spent_amount
-                                //     // foreach ($receipt['new_request_items'] ?? [] as $item) {
-                                //     //     $totalPrice = $parseMoney($item['total_price'] ?? '0');
-                                //     //     $spentAmount += $totalPrice;
-                                //     // }
-                                // }
+                                    // // new_request_items only affects spent_amount
+                                    // foreach ($receipt['new_request_items'] ?? [] as $item) {
+                                    //     $totalPrice = $parseMoney($item['total_price'] ?? '0');
+                                    //     $spentAmount += $totalPrice;
+                                    // }
+                                }
 
-                                // $variance = $approvedAmount - $spentAmount;
+                                $variance = $approvedAmount - $spentAmount;
 
-                                // $set('../../../../approved_request_amount', $formatMoney($approvedAmount));
-                                // $set('../../../../cancelled_amount', $formatMoney($cancelledAmount));
-                                // $set('../../../../spent_amount', $formatMoney($spentAmount));
-                                // $set('../../../../variance', $formatMoney($variance));
+                                $set('../../../../approved_request_amount', $formatMoney($approvedAmount));
+                                $set('../../../../cancelled_amount', $formatMoney($cancelledAmount));
+                                $set('../../../../spent_amount', $formatMoney($spentAmount));
+                                $set('../../../../variance', $formatMoney($variance));
                             }),
                         Checkbox::make('is_realized')
                             ->label('Terealisasi?')
@@ -261,56 +263,56 @@ class CreateSettlementReceipt
                                             }
                                             
                                             // Store current item's known values for calculation
-                                            // const currentRequestTotal = parseMoney($get('request_total_price'));
-                                            // const currentActualTotal = $state ? parseMoney($get('actual_total_price')) : 0;
-                                            // const currentIsRealized = $state;
-                                            // const currentItemId = $get('request_item_id');
+                                            const currentRequestTotal = parseMoney($get('request_total_price'));
+                                            const currentActualTotal = $state ? parseMoney($get('actual_total_price')) : 0;
+                                            const currentIsRealized = $state;
+                                            const currentItemId = $get('id');
                                             
                                             // // Recalculate financial summary
-                                            // const receipts = $get('../../../../settlementReceipts') ?? {};
+                                            const receipts = $get('../../../../settlementReceipts') ?? {};
                                             
-                                            // let approvedAmount = 0;
-                                            // let cancelledAmount = 0;
-                                            // let spentAmount = 0;
+                                            let approvedAmount = 0;
+                                            let cancelledAmount = 0;
+                                            let spentAmount = 0;
                                             
-                                            // Object.values(receipts).forEach(receipt => {
-                                            //     const requestItems = receipt?.request_items ?? {};
-                                            //     Object.values(requestItems).forEach(item => {
-                                            //         const itemRequestItemId = item?.request_item_id;
-                                            //         const requestTotal = parseMoney(item?.request_total_price);
+                                            Object.values(receipts).forEach(receipt => {
+                                                const requestItems = receipt?.requestItems ?? {};
+                                                Object.values(requestItems).forEach(item => {
+                                                    const itemRequestItemId = item?.id;
+                                                    const requestTotal = parseMoney(item?.request_total_price);
                                                     
-                                            //         // Check if this is the current item being edited
-                                            //         const isCurrentItem = itemRequestItemId && itemRequestItemId === currentItemId;
+                                                    // Check if this is the current item being edited
+                                                    const isCurrentItem = itemRequestItemId && itemRequestItemId === currentItemId;
                                                     
-                                            //         approvedAmount += requestTotal;
+                                                    approvedAmount += requestTotal;
                                                     
-                                            //         // Use known values for current item, otherwise use stored values
-                                            //         const isRealized = isCurrentItem 
-                                            //             ? currentIsRealized 
-                                            //             : (item?.is_realized !== false && item?.is_realized !== 0 && item?.is_realized !== '0' && item?.is_realized !== null);
-                                            //         const actualTotal = isCurrentItem ? currentActualTotal : parseMoney(item?.actual_total_price);
+                                                    // Use known values for current item, otherwise use stored values
+                                                    const isRealized = isCurrentItem 
+                                                        ? currentIsRealized 
+                                                        : (item?.is_realized !== false && item?.is_realized !== 0 && item?.is_realized !== '0' && item?.is_realized !== null);
+                                                    const actualTotal = isCurrentItem ? currentActualTotal : parseMoney(item?.actual_total_price);
                                                     
-                                            //         if (!isRealized) {
-                                            //             cancelledAmount += requestTotal;
-                                            //         } else {
-                                            //             spentAmount += actualTotal;
-                                            //         }
-                                            //     });
+                                                    if (!isRealized) {
+                                                        cancelledAmount += requestTotal;
+                                                    } else {
+                                                        spentAmount += actualTotal;
+                                                    }
+                                                });
                                                 
-                                            //     // new_request_items only affects spent_amount
-                                            //     const newRequestItems = receipt?.new_request_items ?? {};
-                                            //     Object.values(newRequestItems).forEach(item => {
-                                            //         const totalPrice = parseMoney(item?.total_price);
-                                            //         spentAmount += totalPrice;
-                                            //     });
-                                            // });
+                                                // new_request_items only affects spent_amount
+                                                // const newRequestItems = receipt?.new_request_items ?? {};
+                                                // Object.values(newRequestItems).forEach(item => {
+                                                //     const totalPrice = parseMoney(item?.total_price);
+                                                //     spentAmount += totalPrice;
+                                                // });
+                                            });
                                             
-                                            // const variance =  approvedAmount - spentAmount;
+                                            const variance =  approvedAmount - spentAmount;
                                             
-                                            // $set('../../../../approved_request_amount', formatMoney(approvedAmount));
-                                            // $set('../../../../cancelled_amount', formatMoney(cancelledAmount));
-                                            // $set('../../../../spent_amount', formatMoney(spentAmount));
-                                            // $set('../../../../variance', formatMoney(variance));
+                                            $set('../../../../approved_request_amount', formatMoney(approvedAmount));
+                                            $set('../../../../cancelled_amount', formatMoney(cancelledAmount));
+                                            $set('../../../../spent_amount', formatMoney(spentAmount));
+                                            $set('../../../../variance', formatMoney(variance));
                                         JS
                             ),
                         Select::make('coa_id')
@@ -386,54 +388,54 @@ class CreateSettlementReceipt
 
                                     $set('actual_total_price', formatMoney(total));
                                     
-                                    // Calculate item variance
-                                    // const requestTotal = parseMoney($get('request_total_price'));
-                                    // $set('variance', formatMoney(requestTotal - total));
+                                    Calculate item variance
+                                    const requestTotal = parseMoney($get('request_total_price'));
+                                    $set('variance', formatMoney(requestTotal - total));
                                     
-                                    // // Store current item's known values
-                                    // const currentActualTotal = total;
-                                    // const currentItemId = $get('request_item_id');
+                                    // Store current item's known values
+                                    const currentActualTotal = total;
+                                    const currentItemId = $get('id');
                                     
-                                    // // Recalculate financial summary
-                                    // const receipts = $get('../../../../settlementReceipts') ?? {};
+                                    // Recalculate financial summary
+                                    const receipts = $get('../../../../settlementReceipts') ?? {};
                                     
-                                    // let approvedAmount = 0;
-                                    // let cancelledAmount = 0;
-                                    // let spentAmount = 0;
+                                    let approvedAmount = 0;
+                                    let cancelledAmount = 0;
+                                    let spentAmount = 0;
                                     
-                                    // Object.values(receipts).forEach(receipt => {
-                                    //     const requestItems = receipt?.request_items ?? {};
-                                    //     Object.values(requestItems).forEach(item => {
-                                    //         const itemRequestItemId = item?.request_item_id;
-                                    //         const reqTotal = parseMoney(item?.request_total_price);
+                                    Object.values(receipts).forEach(receipt => {
+                                        const requestItems = receipt?.requestItems ?? {};
+                                        Object.values(requestItems).forEach(item => {
+                                            const itemRequestItemId = item?.id;
+                                            const reqTotal = parseMoney(item?.request_total_price);
                                             
-                                    //         const isCurrentItem = itemRequestItemId && itemRequestItemId === currentItemId;
+                                            const isCurrentItem = itemRequestItemId && itemRequestItemId === currentItemId;
                                             
-                                    //         approvedAmount += reqTotal;
+                                            approvedAmount += reqTotal;
                                             
-                                    //         const isRealized = item?.is_realized !== false && item?.is_realized !== 0 && item?.is_realized !== '0' && item?.is_realized !== null;
-                                    //         const actualTotal = isCurrentItem ? currentActualTotal : parseMoney(item?.actual_total_price);
+                                            const isRealized = item?.is_realized !== false && item?.is_realized !== 0 && item?.is_realized !== '0' && item?.is_realized !== null;
+                                            const actualTotal = isCurrentItem ? currentActualTotal : parseMoney(item?.actual_total_price);
                                             
-                                    //         if (!isRealized) {
-                                    //             cancelledAmount += reqTotal;
-                                    //         } else {
-                                    //             spentAmount += actualTotal;
-                                    //         }
-                                    //     });
+                                            if (!isRealized) {
+                                                cancelledAmount += reqTotal;
+                                            } else {
+                                                spentAmount += actualTotal;
+                                            }
+                                        });
                                         
-                                    //     const newRequestItems = receipt?.new_request_items ?? {};
-                                    //     Object.values(newRequestItems).forEach(item => {
-                                    //         const totalPrice = parseMoney(item?.total_price);
-                                    //         spentAmount += totalPrice;
-                                    //     });
-                                    // });
+                                        // const newRequestItems = receipt?.new_request_items ?? {};
+                                        // Object.values(newRequestItems).forEach(item => {
+                                        //     const totalPrice = parseMoney(item?.total_price);
+                                        //     spentAmount += totalPrice;
+                                        // });
+                                    });
                                     
-                                    // const summaryVariance =  approvedAmount - spentAmount;
+                                    const summaryVariance =  approvedAmount - spentAmount;
                                     
-                                    // $set('../../../../approved_request_amount', formatMoney(approvedAmount));
-                                    // $set('../../../../cancelled_amount', formatMoney(cancelledAmount));
-                                    // $set('../../../../spent_amount', formatMoney(spentAmount));
-                                    // $set('../../../../variance', formatMoney(summaryVariance));
+                                    $set('../../../../approved_request_amount', formatMoney(approvedAmount));
+                                    $set('../../../../cancelled_amount', formatMoney(cancelledAmount));
+                                    $set('../../../../spent_amount', formatMoney(spentAmount));
+                                    $set('../../../../variance', formatMoney(summaryVariance));
                                 JS),
                         TextInput::make('unit_quantity')
                             ->readOnly(fn (Get $get) => $get('id') !== 'new')
@@ -494,49 +496,49 @@ class CreateSettlementReceipt
                                             $set('variance', formatMoney(requestTotal - total));
                                             
                                             // Store current item's known values
-                                            // const currentActualTotal = total;
-                                            // const currentItemId = $get('request_item_id');
+                                            const currentActualTotal = total;
+                                            const currentItemId = $get('id');
                                             
-                                            // // Recalculate financial summary
-                                            // const receipts = $get('../../../../settlementReceipts') ?? {};
+                                            // Recalculate financial summary
+                                            const receipts = $get('../../../../settlementReceipts') ?? {};
                                             
-                                            // let approvedAmount = 0;
-                                            // let cancelledAmount = 0;
-                                            // let spentAmount = 0;
+                                            let approvedAmount = 0;
+                                            let cancelledAmount = 0;
+                                            let spentAmount = 0;
                                             
-                                            // Object.values(receipts).forEach(receipt => {
-                                            //     const requestItems = receipt?.request_items ?? {};
-                                            //     Object.values(requestItems).forEach(item => {
-                                            //         const itemRequestItemId = item?.request_item_id;
-                                            //         const reqTotal = parseMoney(item?.request_total_price);
+                                            Object.values(receipts).forEach(receipt => {
+                                                const requestItems = receipt?.requestItems ?? {};
+                                                Object.values(requestItems).forEach(item => {
+                                                    const itemRequestItemId = item?.id;
+                                                    const reqTotal = parseMoney(item?.request_total_price);
                                                     
-                                            //         const isCurrentItem = itemRequestItemId && itemRequestItemId === currentItemId;
+                                                    const isCurrentItem = itemRequestItemId && itemRequestItemId === currentItemId;
                                                     
-                                            //         approvedAmount += reqTotal;
+                                                    approvedAmount += reqTotal;
                                                     
-                                            //         const isRealized = item?.is_realized !== false && item?.is_realized !== 0 && item?.is_realized !== '0' && item?.is_realized !== null;
-                                            //         const actualTotal = isCurrentItem ? currentActualTotal : parseMoney(item?.actual_total_price);
+                                                    const isRealized = item?.is_realized !== false && item?.is_realized !== 0 && item?.is_realized !== '0' && item?.is_realized !== null;
+                                                    const actualTotal = isCurrentItem ? currentActualTotal : parseMoney(item?.actual_total_price);
                                                     
-                                            //         if (!isRealized) {
-                                            //             cancelledAmount += reqTotal;
-                                            //         } else {
-                                            //             spentAmount += actualTotal;
-                                            //         }
-                                            //     });
+                                                    if (!isRealized) {
+                                                        cancelledAmount += reqTotal;
+                                                    } else {
+                                                        spentAmount += actualTotal;
+                                                    }
+                                                });
                                                 
-                                            //     const newRequestItems = receipt?.new_request_items ?? {};
-                                            //     Object.values(newRequestItems).forEach(item => {
-                                            //         const totalPrice = parseMoney(item?.total_price);
-                                            //         spentAmount += totalPrice;
-                                            //     });
-                                            // });
+                                                // const newRequestItems = receipt?.new_request_items ?? {};
+                                                // Object.values(newRequestItems).forEach(item => {
+                                                //     const totalPrice = parseMoney(item?.total_price);
+                                                //     spentAmount += totalPrice;
+                                                // });
+                                            });
                                             
-                                            // const summaryVariance =  approvedAmount - spentAmount;
+                                            const summaryVariance =  approvedAmount - spentAmount;
                                             
-                                            // $set('../../../../approved_request_amount', formatMoney(approvedAmount));
-                                            // $set('../../../../cancelled_amount', formatMoney(cancelledAmount));
-                                            // $set('../../../../spent_amount', formatMoney(spentAmount));
-                                            // $set('../../../../variance', formatMoney(summaryVariance));
+                                            $set('../../../../approved_request_amount', formatMoney(approvedAmount));
+                                            $set('../../../../cancelled_amount', formatMoney(cancelledAmount));
+                                            $set('../../../../spent_amount', formatMoney(spentAmount));
+                                            $set('../../../../variance', formatMoney(summaryVariance));
                                         JS
                             ),
                         TextInput::make('request_total_price')

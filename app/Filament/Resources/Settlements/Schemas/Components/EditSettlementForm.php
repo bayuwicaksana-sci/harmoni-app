@@ -6,7 +6,7 @@ use App\Models\Coa;
 use App\Models\ProgramActivity;
 use App\Models\ProgramActivityItem;
 use App\Models\RequestItem;
-use Filament\Actions\Action;
+use App\Models\SettlementReceipt;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
@@ -19,9 +19,12 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\RawJs;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
-class EditSettlementReceipt
+class EditSettlementForm
 {
     public static function make(): Repeater
     {
@@ -34,24 +37,268 @@ class EditSettlementReceipt
             ->itemNumbers()
             ->columns(12)
             ->columnSpanFull()
-                // ->mutateRelationshipDataBeforeCreateUsing(function ($data) {
-                //     dd($data);
-                // })
-                // ->addAction(
-                //     fn (Action $action) => $action->after(function (Get $get, Set $set) {
-                //         CreateSettlement::recalculateFinancialSummary($get, $set, '');
-                //     })
-                // )
-                // ->deleteAction(
-                //     fn (Action $action) => $action->after(function (Get $get, Set $set) {
-                //         CreateSettlement::recalculateFinancialSummary($get, $set, '');
-                //     })
-                // )
+            ->saveRelationshipsUsing(function (Repeater $component, Model $record, $state) {
+
+                $relationship = $component->getRelationship();
+                // Get the IDs from the current state
+                $currentIds = collect($state)
+                    ->pluck('id')
+                    ->filter()
+                    ->map(fn ($value) => $value === 'new' ? $value : (int) $value)
+                    ->toArray();
+
+                // Get existing IDs
+                $existingIds = $relationship->pluck($relationship->getRelated()->getKeyName())->toArray();
+
+                // Determine which records to detach (instead of delete)
+                $idsToHandle = array_diff($existingIds, $currentIds);
+
+                // dd($component, $record, $state, $currentIds, $existingIds, $idsToHandle);
+
+                foreach ($idsToHandle as $index => $id) {
+                    if (in_array($id, $existingIds)) {
+                        $retrievedSettlementReceipt = SettlementReceipt::find($id);
+
+                        $requestItems = $retrievedSettlementReceipt->requestItems;
+
+                        foreach ($requestItems as $index => $item) {
+                            if (! $item->is_unplanned) {
+                                $item->clearMediaCollection('request_item_image');
+                                $item->update([
+                                    'act_quantity' => null,
+                                    'act_amount_per_item' => null,
+                                    'status' => RequestItemStatus::WaitingSettlement,
+                                    'settlement_receipt_id' => null,
+                                    'settlement_id' => null,
+                                ]);
+                            } else {
+                                $item->forceDelete();
+                            }
+
+                        }
+
+                        // $retrievedSettlementReceipt->clearMediaCollection('settlement_receipt_attachments');
+                        $retrievedSettlementReceipt->delete();
+                    }
+                }
+                // Handle creates and updates
+                foreach ($state as $receiptIndex => $receiptData) {
+                    if (isset($receiptData['id'])) {
+                        $originalReceipt = SettlementReceipt::find($receiptData['id']);
+                        if ($originalReceipt->realization_date !== $receiptData['realization_date']) {
+                            $originalReceipt->update(['realization_date' => $receiptData['realization_date']]);
+                            $originalReceipt->refresh();
+                        }
+
+                        foreach ($receiptData['attachment'] as $attIndex => $file) {
+                            if ($file instanceof TemporaryUploadedFile) {
+                                $originalReceipt->clearMediaCollection('settlement_receipt_attachments');
+                                $originalReceipt->copyMedia($file)->toMediaCollection('settlement_receipt_attachments', 'local');
+
+                                @unlink($file->getPathname());
+                            }
+                        }
+
+                        Log::info("\n\n\n\nSettlement Receipt Id = ".(string) $receiptData['id']);
+
+                        $currentItemIds = collect($receiptData['requestItems'])
+                            ->pluck('id')
+                            ->filter()
+                            ->map(fn ($value) => $value === 'new' ? $value : (int) $value)
+                            ->toArray();
+
+                        // Get existing IDs
+                        $existingItemIds = $originalReceipt->requestItems->pluck('id')->toArray();
+
+                        // Determine which records to detach (instead of delete)
+                        $itemIdsToHandle = array_diff($existingItemIds, $currentItemIds);
+
+                        Log::info("\n\nCurrent Item IDs");
+                        Log::info($currentItemIds);
+                        Log::info("\n\nExisting Item IDs");
+                        Log::info($existingItemIds);
+
+                        foreach ($itemIdsToHandle as $index => $itemId) {
+                            if (in_array($itemId, $existingItemIds)) {
+                                Log::info("\n\nItem ID to Handle = ".(string) $itemId);
+                                $retrievedRequestItem = RequestItem::find($itemId);
+                                if (! $retrievedRequestItem->is_unplanned) {
+                                    $retrievedRequestItem->act_quantity = null;
+                                    $retrievedRequestItem->act_amount_per_item = null;
+                                    $retrievedRequestItem->status = RequestItemStatus::WaitingSettlement;
+                                    $retrievedRequestItem->settlement_id = null;
+                                    $retrievedRequestItem->settlement_receipt_id = null;
+                                    $retrievedRequestItem->save();
+
+                                    $retrievedRequestItem->clearMediaCollection('request_item_image');
+                                } else {
+                                    $retrievedRequestItem->forceDelete();
+                                }
+                            }
+                        }
+
+                        foreach ($receiptData['requestItems'] as $itemDataIndex => $itemData) {
+                            if (isset($itemData['id']) && $itemData['id'] !== 'new') {
+                                $originalItem = RequestItem::find((int) $itemData['id']);
+
+                                // $existingMedia = $originalItem->getMedia('request_item_image')->pluck('uuid', 'uuid')->toArray();
+
+                                // dd($existingMedia, $itemData['item_image'], array_diff($existingMedia, $itemData['item_image']));
+
+                                if (! $originalItem->settlement_id) {
+                                    // dd($itemData['item_image']);
+                                    foreach ($itemData['item_image'] ?? [] as $index => $file) {
+                                        $originalItem->copyMedia($file)->toMediaCollection('request_item_image', 'local');
+
+                                        @unlink($file->getPathname());
+                                    }
+                                } else {
+                                    foreach ($itemData['item_image'] ?? [] as $index => $file) {
+                                        if ($file instanceof TemporaryUploadedFile) {
+                                            $originalItem->copyMedia($file)->toMediaCollection('request_item_image', 'local');
+
+                                            @unlink($file->getPathname());
+                                        }
+                                    }
+                                }
+
+                                $originalItem->settlement_id = $record->id;
+                                $originalItem->settlement_receipt_id = $originalReceipt->id;
+                                $originalItem->act_quantity = (float) str_replace(['.', ','], ['', '.'], $itemData['act_quantity']);
+                                $originalItem->act_amount_per_item = (float) str_replace(['.', ','], ['', '.'], $itemData['act_amount_per_item']);
+                                $originalItem->status = (float) str_replace(['.', ','], ['', '.'], $itemData['act_quantity']) <= 0.00 || (float) str_replace(['.', ','], ['', '.'], $itemData['act_amount_per_item']) <= 0.00 ? RequestItemStatus::Cancelled : $originalItem->status;
+
+                                $originalItem->save();
+
+                                Log::info("\n\nUpdated Item of Existing Receipt ID = ".(string) $originalReceipt->id.' => '.(string) $originalItem->id);
+                            } else {
+
+                                $itemData['program_activity_id'] = $itemData['program_activity_id'] ?? null;
+                                $itemData['program_activity_item_id'] = isset($itemData['program_activity_id']) || $itemData['program_activity_id'] !== '' || $itemData['program_activity_id'] !== null ? ProgramActivityItem::whereProgramActivityId($itemData['program_activity_id'])
+                                    ->whereDescription($itemData['description'])
+                                    ->value('id')
+                                    : null;
+                                $itemData['quantity'] = (float) str_replace(['.', ','], ['', '.'], $itemData['quantity']);
+                                $itemData['amount_per_item'] = (float) str_replace(['.', ','], ['', '.'], $itemData['amount_per_item']);
+                                $itemData['act_quantity'] = (float) str_replace(['.', ','], ['', '.'], $itemData['act_quantity']);
+                                $itemData['act_amount_per_item'] = (float) str_replace(['.', ','], ['', '.'], $itemData['act_amount_per_item']);
+                                $itemData['self_account'] = true;
+                                $itemData['bank_name'] = Auth::user()->employee->bank_name;
+                                $itemData['bank_account'] = Auth::user()->employee->bank_account_number;
+                                $itemData['account_owner'] = Auth::user()->employee->bank_cust_name;
+                                $itemData['is_unplanned'] = true;
+                                $itemData['payment_type'] = RequestPaymentType::Reimburse;
+                                $itemData['status'] = RequestItemStatus::Draft;
+                                $itemData['settlement_id'] = $record->id;
+                                $itemData['settlement_receipt_id'] = $originalReceipt->id;
+
+                                $itemImage = $itemData['item_image'];
+
+                                unset($itemData['item_image']);
+
+                                $createdItem = RequestItem::create($itemData);
+
+                                foreach ($itemImage ?? [] as $index => $file) {
+                                    $createdItem->copyMedia($file)->toMediaCollection('request_item_image', 'local');
+                                }
+
+                                Log::info("\n\nCreated New Item of Existing Receipt Id = ".(string) $originalReceipt->id);
+                                Log::info($itemData);
+
+                            }
+                        }
+                    } else {
+                        $createdReceipt = SettlementReceipt::create([
+                            'realization_date' => $receiptData['realization_date'],
+                            'settlement_id' => $record->id,
+                        ]);
+
+                        $createdReceipt = $createdReceipt->fresh();
+
+                        Log::info("\n\nCreated New Receipt Id = ".(string) $createdReceipt->id);
+
+                        foreach ($receiptData['attachment'] as $index => $file) {
+                            $createdReceipt->copyMedia($file)->toMediaCollection('settlement_receipt_attachments');
+                            @unlink($file->getPathname());
+                        }
+
+                        foreach ($receiptData['requestItems'] as $itemDataIndex => $itemData2) {
+                            if (isset($itemData2['id']) && $itemData2['id'] !== 'new') {
+                                $originalItem2 = RequestItem::find((int) $itemData2['id']);
+
+                                // $existingMedia = $originalItem2->getMedia('request_item_image')->pluck('uuid', 'uuid')->toArray();
+
+                                // dd($existingMedia, $itemData2['item_image'], array_diff($existingMedia, $itemData2['item_image']));
+
+                                if (! $originalItem2->settlement_id) {
+                                    // dd($itemData2['item_image']);
+                                    foreach ($itemData2['item_image'] ?? [] as $index => $file) {
+                                        $originalItem2->copyMedia($file)->toMediaCollection('request_item_image', 'local');
+
+                                        // @unlink($file->getPathname());
+                                    }
+                                }
+
+                                $originalItem2->settlement_id = $record->id;
+                                $originalItem2->settlement_receipt_id = $createdReceipt->id;
+                                $originalItem2->act_quantity = (float) str_replace(['.', ','], ['', '.'], $itemData2['act_quantity']);
+                                $originalItem2->act_amount_per_item = (float) str_replace(['.', ','], ['', '.'], $itemData2['act_amount_per_item']);
+                                $originalItem2->status = (float) str_replace(['.', ','], ['', '.'], $itemData2['act_quantity']) <= 0.00 || (float) str_replace(['.', ','], ['', '.'], $itemData2['act_amount_per_item']) <= 0.00 ? RequestItemStatus::Cancelled : $originalItem2->status;
+
+                                $originalItem2->save();
+
+                                Log::info("\n\nUpdated Item of New Receipt ID = ".(string) $createdReceipt->id.' => '.(string) $originalItem2->id);
+
+                            } else {
+                                $itemData2['program_activity_id'] = (int) $itemData2['program_activity_id'] ?? null;
+                                $itemData2['program_activity_item_id'] = isset($itemData2['program_activity_id']) || $itemData2['program_activity_id'] !== '' || $itemData2['program_activity_id'] !== null ? ProgramActivityItem::whereProgramActivityId((int) $itemData2['program_activity_id'])
+                                    ->whereDescription($itemData2['description'])
+                                    ->value('id')
+                                    : null;
+                                $itemData2['quantity'] = (float) str_replace(['.', ','], ['', '.'], $itemData2['quantity']);
+                                $itemData2['amount_per_item'] = (float) str_replace(['.', ','], ['', '.'], $itemData2['amount_per_item']);
+                                $itemData2['act_quantity'] = (float) str_replace(['.', ','], ['', '.'], $itemData2['act_quantity']);
+                                $itemData2['act_amount_per_item'] = (float) str_replace(['.', ','], ['', '.'], $itemData2['act_amount_per_item']);
+                                $itemData2['self_account'] = true;
+                                $itemData2['bank_name'] = Auth::user()->employee->bank_name;
+                                $itemData2['bank_account'] = Auth::user()->employee->bank_account_number;
+                                $itemData2['account_owner'] = Auth::user()->employee->bank_cust_name;
+                                $itemData2['is_unplanned'] = true;
+                                $itemData2['payment_type'] = RequestPaymentType::Reimburse;
+                                $itemData2['status'] = RequestItemStatus::Draft;
+                                $itemData2['settlement_id'] = $record->id;
+                                $itemData2['settlement_receipt_id'] = $createdReceipt->id;
+
+                                $itemImage = $itemData2['item_image'];
+
+                                unset($itemData2['item_image']);
+
+                                $createdItem = RequestItem::create($itemData2);
+
+                                foreach ($itemImage ?? [] as $index => $file) {
+                                    $createdItem->copyMedia($file)->toMediaCollection('request_item_image', 'local');
+                                }
+
+                                Log::info("\n\nCreated New Item of New Receipt ID = ".(string) $createdReceipt->id);
+                                Log::info($itemData2);
+
+                            }
+                        }
+                    }
+
+                }
+            })
             ->schema([
                 SpatieMediaLibraryFileUpload::make('attachment')
                     ->required()
+                    ->validationMessages([
+                        'required' => 'Eits, jangan lupa upload nota ya!',
+                    ])
                     ->collection('settlement_receipt_attachments')
+                    ->dehydrated(true)
+                    ->storeFiles(false)
                     ->label('Upload Nota')
+                    ->openable(true)
                     ->multiple(false)
                     ->columnSpan(6),
                 DatePicker::make('realization_date')
@@ -68,59 +315,99 @@ class EditSettlementReceipt
                     ->compact()
                     ->addActionAlignment(Alignment::Start)
                     ->columnSpanFull()
-                    ->mutateRelationshipDataBeforeCreateUsing(function ($data, $record) {
+                    ->saveRelationshipsUsing(function () {})
+                    // ->saveRelationshipsUsing(function (Repeater $component, Model $record, $state, $rawState) {
 
-                        if ($data['id'] === 'new') {
-                            $data['self_account'] = true;
-                            $data['bank_name'] = Auth::user()->employee->bank_name;
-                            $data['bank_account'] = Auth::user()->employee->bank_account_number;
-                            $data['account_owner'] = Auth::user()->employee->bank_cust_name;
-                            $data['is_unplanned'] = true;
-                            $data['payment_type'] = RequestPaymentType::Reimburse;
-                            $data['status'] = RequestItemStatus::Draft;
+                    //     $relationship = $component->getRelationship();
+                    //     // Get the IDs from the current state
+                    //     $currentIds = collect($state)
+                    //         ->pluck('id')
+                    //         ->filter()
+                    //         ->map(fn ($value) => $value === 'new' ? $value : (int) $value)
+                    //         ->toArray();
 
-                            return $data;
-                        } else {
-                            $originalItem = RequestItem::find((int) $data['id']);
+                    //     // Get existing IDs
+                    //     $existingIds = $relationship->pluck($relationship->getRelated()->getKeyName())->toArray();
 
-                            $originalItem->act_quantity = $data['act_quantity'];
-                            $originalItem->act_amount_per_item = $data['act_amount_per_item'];
-                            $originalItem->settlement_id = $record->settlement_id;
-                            $originalItem->settlement_receipt_id = $record->id;
-                            $originalItem->status = ! $data['is_realized'] || $data['act_quantity'] <= 0.00 || $data['act_amount_per_item'] <= 0.00 ? RequestItemStatus::Cancelled : $originalItem->status;
+                    //     // Determine which records to detach (instead of delete)
+                    //     $idsToHandle = array_diff($existingIds, $currentIds);
 
-                            $originalItem->save();
+                    //     // dd($currentIds, $existingIds, $idsToHandle);
+                    //     foreach ($idsToHandle as $index => $id) {
+                    //         if (in_array($id, $existingIds)) {
+                    //             $retrievedRequestItem = RequestItem::find($id);
+                    //             if (! $retrievedRequestItem->is_unplanned) {
+                    //                 $retrievedRequestItem->act_quantity = null;
+                    //                 $retrievedRequestItem->act_amount_per_item = null;
+                    //                 $retrievedRequestItem->status = RequestItemStatus::WaitingSettlement;
+                    //                 $retrievedRequestItem->settlement_id = null;
+                    //                 $retrievedRequestItem->settlement_receipt_id = null;
+                    //                 $retrievedRequestItem->save();
 
-                            foreach ($data['item_image'] as $index => $file) {
-                                $originalItem->copyMedia($file)->toMediaCollection('request_item_image');
-                            }
-                        }
-                    })
-                    // ->mutateRelationshipDataBeforeSaveUsing(function ($data) {
-                    //     if ($data['id'] === 'new') {
-                    //         $data['self_account'] = true;
-                    //         $data['bank_name'] = Auth::user()->employee->bank_name;
-                    //         $data['bank_account'] = Auth::user()->employee->bank_account_number;
-                    //         $data['account_owner'] = Auth::user()->employee->bank_cust_name;
-                    //         $data['is_unplanned'] = true;
-
-                    //         return $data;
-                    //     } else {
-                    //         return $data;
-
+                    //                 $retrievedRequestItem->clearMediaCollection('request_item_image');
+                    //             } else {
+                    //                 $retrievedRequestItem->forceDelete();
+                    //             }
+                    //         }
                     //     }
+                    //     // Handle creates and updates
+                    //     foreach ($state as $itemData) {
+                    //         if (isset($itemData['id']) && $itemData['id'] !== 'new') {
+                    //             $originalItem = RequestItem::find((int) $itemData['id']);
 
+                    //             // $existingMedia = $originalItem->getMedia('request_item_image')->pluck('uuid', 'uuid')->toArray();
+
+                    //             // dd($existingMedia, $itemData['item_image'], array_diff($existingMedia, $itemData['item_image']));
+
+                    //             if (! $originalItem->settlement_id) {
+                    //                 // dd($itemData['item_image']);
+                    //                 foreach ($itemData['item_image'] ?? [] as $index => $file) {
+                    //                     $originalItem->copyMedia($file)->toMediaCollection('request_item_image', 'local');
+
+                    //                     // @unlink($file->getPathname());
+                    //                 }
+                    //             }
+
+                    //             $originalItem->settlement_id = $record->settlement_id;
+                    //             $originalItem->settlement_receipt_id = $record->id;
+                    //             $originalItem->act_quantity = (float) str_replace(['.', ','], ['', '.'], $itemData['act_quantity']);
+                    //             $originalItem->act_amount_per_item = (float) str_replace(['.', ','], ['', '.'], $itemData['act_amount_per_item']);
+                    //             $originalItem->status = (float) str_replace(['.', ','], ['', '.'], $itemData['act_quantity']) <= 0.00 || (float) str_replace(['.', ','], ['', '.'], $itemData['act_amount_per_item']) <= 0.00 ? RequestItemStatus::Cancelled : $originalItem->status;
+
+                    //             $originalItem->save();
+
+                    //         } else {
+                    //             $itemData['program_activity_id'] = $itemData['program_activity_id'] ?? null;
+                    //             $itemData['program_activity_item_id'] = isset($itemData['program_activity_id']) || $itemData['program_activity_id'] !== '' || $itemData['program_activity_id'] !== null ? ProgramActivityItem::whereProgramActivityId((int) $itemData['program_activity_id'])
+                    //                 ->whereDescription($itemData['description'])
+                    //                 ->value('id')
+                    //                 : null;
+                    //             $itemData['quantity'] = (float) str_replace(['.', ','], ['', '.'], $itemData['quantity']);
+                    //             $itemData['amount_per_item'] = (float) str_replace(['.', ','], ['', '.'], $itemData['amount_per_item']);
+                    //             $itemData['act_quantity'] = (float) str_replace(['.', ','], ['', '.'], $itemData['act_quantity']);
+                    //             $itemData['act_amount_per_item'] = (float) str_replace(['.', ','], ['', '.'], $itemData['act_amount_per_item']);
+                    //             $itemData['self_account'] = true;
+                    //             $itemData['bank_name'] = Auth::user()->employee->bank_name;
+                    //             $itemData['bank_account'] = Auth::user()->employee->bank_account_number;
+                    //             $itemData['account_owner'] = Auth::user()->employee->bank_cust_name;
+                    //             $itemData['is_unplanned'] = true;
+                    //             $itemData['payment_type'] = RequestPaymentType::Reimburse;
+                    //             $itemData['status'] = RequestItemStatus::Draft;
+                    //             $itemData['settlement_id'] = $record->settlement_id;
+
+                    //             $itemImage = $itemData['item_image'];
+
+                    //             unset($itemData['item_image']);
+
+                    //             $createdItem = $relationship->create($itemData);
+
+                    //             foreach ($itemImage ?? [] as $index => $file) {
+                    //                 $createdItem->copyMedia($file)->toMediaCollection('request_item_image', 'local');
+                    //             }
+
+                    //         }
+                    //     }
                     // })
-                    // ->addAction(
-                    //     fn (Action $action) => $action->after(function (Get $get, Set $set) {
-                    //         CreateSettlement::recalculateFinancialSummary($get, $set, '../../');
-                    //     })
-                    // )
-                    // ->deleteAction(
-                    //     fn (Action $action) => $action->after(function (Get $get, Set $set) {
-                    //         CreateSettlement::recalculateFinancialSummary($get, $set, '../../');
-                    //     })
-                    // )
                     ->extraAttributes([
                         'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
                     ])
@@ -144,13 +431,15 @@ class EditSettlementReceipt
                     ->schema([
                         Select::make('id')
                             ->label('Pilih Item Request')
-                            ->requiredWith('act_quantity,act_amount_per_item')
+                            ->required()
                             ->validationMessages([
                                 'required_with' => 'Item wajib dipilih',
                             ])
                             ->native(true)
                             ->live()
-                            // ->partiallyRenderComponentsAfterStateUpdated(['request_quantity', 'request_unit_quantity', 'request_amount_per_item'])
+                            ->disabled(fn ($state, Get $get) => $state !== 'new' && $state !== null && $get('settlement_receipt_id') !== null)
+                            ->dehydrated(true)
+                    // ->partiallyRenderComponentsAfterStateUpdated(['request_quantity', 'request_unit_quantity', 'request_amount_per_item'])
                             ->options(function ($record) {
                                 $options = RequestItem::query()
                                     ->whereHas('dailyPaymentRequest', fn (Builder $query) => $query->where('requester_id', Auth::user()->employee->id))
@@ -200,7 +489,7 @@ class EditSettlementReceipt
                                 if ($state && $state !== 'new') {
                                     $requestItem = RequestItem::with(['dailyPaymentRequest:id,request_number', 'coa:id,name', 'programActivity:id,name'])
                                         ->where('id', $state)
-                                        ->first(['quantity', 'unit_quantity', 'amount_per_item', 'daily_payment_request_id', 'coa_id', 'program_activity_id', 'description']);
+                                        ->first(['settlement_receipt_id', 'quantity', 'unit_quantity', 'amount_per_item', 'daily_payment_request_id', 'coa_id', 'program_activity_id', 'description']);
 
                                     $set('coa_id', $requestItem->coa_id);
                                     $set('program_activity_id', $requestItem->program_activity_id);
@@ -208,6 +497,7 @@ class EditSettlementReceipt
                                     $set('quantity', (int) $requestItem->quantity);
                                     $set('unit_quantity', $requestItem->unit_quantity);
                                     $set('amount_per_item', $formatMoney($requestItem->amount_per_item));
+                                    $set('settlement_receipt_id', $requestItem->settlement_receipt_id);
 
                                     $currentRequestTotal = $requestItem->quantity * $requestItem->amount_per_item;
                                     $set('request_total_price', $formatMoney($currentRequestTotal));
@@ -222,6 +512,7 @@ class EditSettlementReceipt
                                     $set('amount_per_item', '0,00');
                                     $set('act_amount_per_item', '0,00');
                                     $set('request_total_price', '0,00');
+                                    $set('settlement_receipt_id', null);
                                 } else {
                                     $set('coa_id', null);
                                     $set('program_activity_id', null);
@@ -230,6 +521,7 @@ class EditSettlementReceipt
                                     $set('unit_quantity', null);
                                     $set('amount_per_item', null);
                                     $set('request_total_price', null);
+                                    $set('settlement_receipt_id', null);
                                 }
 
                                 // Recalculate financial summary
@@ -274,8 +566,8 @@ class EditSettlementReceipt
                             ->label('Terealisasi?')
                             ->default(true)
                             ->dehydrated(false)
+                            ->formatStateUsing(fn (Get $get) => $get('id') !== 'new' || $get('id') !== null ? true : $get('act_quantity') > 0)
                             ->disabled(fn (Get $get) => $get('id') === 'new')
-                            ->formatStateUsing(fn ($operation, Get $get) => $operation === 'create' ? true : $get('act_quantity') > 0)
                             ->inline(false)
                             ->extraAttributes(
                                 [
@@ -489,6 +781,7 @@ class EditSettlementReceipt
                             ->prefix('Rp')
                             ->readOnly()
                             ->dehydrated(fn (Get $get) => $get('id') === 'new')
+                            ->formatStateUsing(fn ($state) => $state ? (float) $state : null)
                             ->dehydrateStateUsing(fn ($rawState) => (float) str_replace(['.', ','], ['', '.'], $rawState))
                             ->mask(RawJs::make('$money($input, \',\', \'.\', 2)')),
                         // ->afterStateUpdatedJs(
@@ -619,7 +912,11 @@ class EditSettlementReceipt
                             ->appendFiles()
                             ->maxSize(4096)
                             ->columnSpanFull()
+                            // ->dehydrated(function (Get $get) {
+                            //     return $get('id') === 'new' || ($get('id') !== null && RequestItem::find((int) $get('id'))->settlement_receipt_id === null);
+                            // })
                             ->dehydrated(true)
+                            ->storeFiles(false)
                             ->previewable(false)
                             ->openable(true)
                             ->required()

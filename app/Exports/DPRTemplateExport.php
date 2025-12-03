@@ -2,15 +2,17 @@
 
 namespace App\Exports;
 
+use App\Models\Coa;
+use App\Models\ProgramActivity;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
-use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use Maatwebsite\Excel\Concerns\WithEvents;
-use Maatwebsite\Excel\Events\AfterSheet;
-use Illuminate\Support\Str;
 
 class DPRTemplateExport implements WithMultipleSheets
 {
@@ -33,7 +35,7 @@ class DPRTemplateExport implements WithMultipleSheets
 }
 
 // Client Data Sheet (Step 1)
-class RequestItemSheet implements FromCollection, WithHeadings, WithTitle, WithStyles, WithEvents
+class RequestItemSheet implements FromCollection, WithColumnFormatting, WithColumnWidths, WithHeadings, WithStyles, WithTitle
 {
     protected $data;
 
@@ -51,7 +53,7 @@ class RequestItemSheet implements FromCollection, WithHeadings, WithTitle, WithS
     {
         return [
             ['List Request Item'],
-            ['Deskripsi Item', 'Qty', 'Unit Qty', 'Harga Per Item', 'Tipe Request (reimburse/advance)', 'Nama Bank', 'Nomor Rekening', 'Nama Pemilik Rekening']
+            ['Kode COA', 'Aktivitas', 'Deskripsi Item', 'Qty', 'Unit Qty', 'Harga Per Item', 'Tipe Request (reimburse/advance)', 'Nama Bank', 'Nomor Rekening', 'Nama Pemilik Rekening', 'Keterangan'],
         ];
     }
 
@@ -61,9 +63,11 @@ class RequestItemSheet implements FromCollection, WithHeadings, WithTitle, WithS
 
         // Add PIC rows
         $items = $this->data['requestItems'] ?? [];
-        if (!empty($items)) {
+        if (! empty($items)) {
             foreach ($items as $item) {
                 $rows->push([
+                    $item['coa_id'] ? Coa::find((int) $item['coa_id'])->code ?? '' : '',
+                    $item['program_activity_id'] ? ProgramActivity::whereCoaId((int) $item['coa_id'])->find((int) $item['program_activity_id'])->code ?? '' : '',
                     $item['item'] ?? '',
                     (int) $item['qty'] ?? '',
                     $item['unit_qty'] ?? '',
@@ -72,6 +76,7 @@ class RequestItemSheet implements FromCollection, WithHeadings, WithTitle, WithS
                     $item['bank_name'] ?? '',
                     (string) $item['bank_account'] ?? '',
                     $item['account_owner'] ?? '',
+                    $item['notes'] ?? '',
                 ]);
             }
         }
@@ -87,21 +92,30 @@ class RequestItemSheet implements FromCollection, WithHeadings, WithTitle, WithS
         ];
     }
 
-    public function registerEvents(): array
+    public function columnWidths(): array
     {
         return [
-            AfterSheet::class => function (AfterSheet $event) {
-                $event->sheet->getDelegate()->getColumnDimension('A')->setWidth(50);
-                $event->sheet->getDelegate()->getColumnDimension('B')->setWidth(10);
-                $event->sheet->getDelegate()->getColumnDimension('C')->setWidth(20);
-                $event->sheet->getDelegate()->getColumnDimension('D')->setWidth(30);
-                $event->sheet->getDelegate()->getColumnDimension('E')->setWidth(40);
-                $event->sheet->getDelegate()->getColumnDimension('F')->setWidth(30);
-                $event->sheet->getDelegate()->getColumnDimension('G')->setWidth(30);
-                $event->sheet->getDelegate()->getColumnDimension('H')->setWidth(30);
-            },
+            'A' => 45,
+            'B' => 45,
+            'C' => 45,
+            'D' => 25,
+            'E' => 25,
+            'F' => 45,
+            'G' => 45,
+            'H' => 45,
+            'I' => 45,
+            'J' => 45,
+            'K' => 45,
+            'L' => 45,
         ];
     }
+
+    // public function columnFormats(): array
+    // {
+    //     return [
+    //         'I' => \PhpOffice\PhpSpreadsheet\Sty,
+    //     ];
+    // }
 }
 
 // // Programs Sheet (Step 2)

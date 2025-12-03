@@ -30,8 +30,6 @@ class EditSettlement extends EditRecord
         return [
             $this->getSaveFormAction()
                 ->formId('form'),
-            $this->getCancelFormAction()
-                ->formId('form'),
             Action::make('saveAndSubmit')
                 ->label('Save & Submit')
                 ->icon('heroicon-o-paper-airplane')
@@ -164,6 +162,8 @@ class EditSettlement extends EditRecord
                 ),
 
             ViewAction::make(),
+            $this->getCancelFormAction()
+                ->formId('form'),
             DeleteAction::make()
                 ->visible(fn () => ($this->record->status === SettlementStatus::Draft || $this->record->status === SettlementStatus::WaitingRefund)
                     && $this->record->submitter_id === Auth::user()->employee?->id

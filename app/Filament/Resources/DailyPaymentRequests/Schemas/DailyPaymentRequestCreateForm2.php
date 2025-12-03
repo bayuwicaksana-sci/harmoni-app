@@ -13,7 +13,6 @@ use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -32,21 +31,27 @@ class DailyPaymentRequestCreateForm2
     public static function formFields(): array
     {
         return [
-            Group::make([
-                TextInput::make('total_request_amount')
-                    // ->numeric()
-                    ->readOnly()
-                    ->dehydrated(false)
-                    ->prefix('Rp')
-                    ->mask(RawJs::make('$money($input, \',\', \'.\', 2)')),
-            ])
-                ->columns(3)
-                ->columnSpanFull(),
             Repeater::make('requestItems')
                 ->hiddenLabel()
-                ->defaultItems(8)
+                ->defaultItems(3)
                 ->compact()
-                ->live(onBlur: 500)
+                // ->live(onBlur: 500)
+                ->columnSpanFull()
+                ->addActionAlignment(Alignment::Start)
+                ->extraAttributes([
+                    'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
+                ])
+                ->mutateDehydratedStateUsing(function ($state) {
+                    if (is_array($state)) {
+                        // Filter out completely empty rows
+                        return array_values(array_filter($state, function ($item) {
+                            return ! empty(array_filter($item ?? []));
+                        }));
+                    }
+                    dd($state);
+
+                    return $state;
+                })
                 ->table(
                     [
                         TableColumn::make('COA')->width('280px'),
@@ -59,7 +64,7 @@ class DailyPaymentRequestCreateForm2
                         TableColumn::make('Tipe Request')->width('200px'),
                         TableColumn::make('Lampiran')->width('350px'),
                         TableColumn::make('Foto Item/Produk')->width('350px'),
-                        TableColumn::make('Kirim Ke Rekening Sendiri ?')->width('225px')
+                        TableColumn::make('Kirim Ke Rekening Sendiri?')->width('225px')
                             ->alignment(Alignment::Center),
                         TableColumn::make('Nama Bank')->width('200px'),
                         TableColumn::make('Nomor Rekening')->width('200px'),
@@ -70,6 +75,7 @@ class DailyPaymentRequestCreateForm2
                 )
                 ->schema([
                     Select::make('coa_id')
+                        ->label('COA')
                         ->options(Coa::query()->pluck('name', 'id'))
                         ->native(false)
                         ->live()
@@ -83,6 +89,7 @@ class DailyPaymentRequestCreateForm2
                             JS
                         ),
                     Select::make('program_activity_id')
+                        ->label('Aktivitas')
                         ->options(fn (Get $get) => ProgramActivity::query()->whereCoaId($get('coa_id'))->pluck('name', 'id'))
                         ->live()
                         ->native(false)
@@ -90,6 +97,7 @@ class DailyPaymentRequestCreateForm2
                         ->searchable()
                         ->disabled(fn (Get $get) => $get('coa_id') === null),
                     TextInput::make('item')
+                        ->label('Item')
                         ->requiredWith('coa_id,qty,unit_qty,base_price')
                         ->validationMessages([
                             'required_with' => 'Deskripsi item wajib diisi',
@@ -97,6 +105,7 @@ class DailyPaymentRequestCreateForm2
                         ->datalist(fn (Get $get) => ProgramActivityItem::query()->whereProgramActivityId($get('program_activity_id'))->pluck('description')->toArray())
                         ->live(debounce: 500),
                     TextInput::make('qty')
+                        ->label('Qty')
                         ->requiredWith('coa_id,item,unit_qty,base_price')
                         ->validationMessages([
                             'required_with' => 'Jumlah item wajib diisi',
@@ -124,6 +133,7 @@ class DailyPaymentRequestCreateForm2
                             }
                         JS),
                     TextInput::make('unit_qty')
+                        ->label('Unit Qty')
                         ->requiredWith('coa_id,item,qty,base_price')
                         ->validationMessages([
                             'required_with' => 'Satuan item wajib diisi',
@@ -135,6 +145,7 @@ class DailyPaymentRequestCreateForm2
                             return $activityItem ? $activityItem->unit : null;
                         }),
                     TextInput::make('base_price')
+                        ->label('Base Price')
                         ->requiredWith('coa_id,item,qty,unit_qty')
                         ->validationMessages([
                             'required_with' => 'Harga per item wajib diisi',
@@ -168,6 +179,7 @@ class DailyPaymentRequestCreateForm2
                         JS)
                         ->minValue(1),
                     TextInput::make('total_price')
+                        ->label('Total Price')
                         ->prefix('Rp')
                         // ->placeholder(fn(Get $get) => number_format(ProgramActivityItem::whereDescription($get('item'))->value('total_item_planned_budget'), 2, ',', '.') ?? null)
                         ->placeholder(function (Get $get) {
@@ -202,7 +214,7 @@ class DailyPaymentRequestCreateForm2
                             }
                         JS),
                     Select::make('payment_type')
-                        ->label('Tipe Pengajuan')
+                        ->label('Tipe Request')
                         // ->options(RequestPaymentType::getSelectOptions(exclude: [RequestPaymentType::Offset]))
                         ->options([
                             RequestPaymentType::Advance->value => RequestPaymentType::Advance->getLabel(),
@@ -249,10 +261,11 @@ class DailyPaymentRequestCreateForm2
                             'required' => 'Foto Item/Produk diperlukan untuk Reimbursement',
                         ]),
                     Toggle::make('self_account')
+                        ->label('Kirim ke Rekening Sendiri?')
                         ->inline(false)
                         ->default(true)
                         ->extraAlpineAttributes([
-                            'class' => 'mx-auto',
+                            'class' => 'sm:mx-auto',
                         ])
                         ->live()
                         // ->disabled(fn(Get $get) => $get('payment_type') === RequestPaymentType::Reimburse)
@@ -268,6 +281,7 @@ class DailyPaymentRequestCreateForm2
                             }
                         }),
                     TextInput::make('bank_name')
+                        ->label('Nama Bank')
                         ->default(Auth::user()->employee?->bank_name)
                         ->required()
                         ->validationMessages([
@@ -275,6 +289,7 @@ class DailyPaymentRequestCreateForm2
                         ])
                         ->readOnly(fn (Get $get) => $get('self_account')),
                     TextInput::make('bank_account')
+                        ->label('Nomor Rekening')
                         ->numeric()
                         ->required()
                         ->validationMessages([
@@ -284,6 +299,7 @@ class DailyPaymentRequestCreateForm2
                         ->dehydrateStateUsing(fn ($rawState) => (string) $rawState)
                         ->readOnly(fn (Get $get) => $get('self_account')),
                     TextInput::make('account_owner')
+                        ->label('Nama Pemilik Rekening')
                         ->required()
                         ->validationMessages([
                             'required' => 'Nama Pemilik Rekening wajib diisi',
@@ -293,23 +309,13 @@ class DailyPaymentRequestCreateForm2
                     Textarea::make('notes')
                         ->label('Keterangan'),
 
-                ])
-                ->columnSpanFull()
-                ->addActionAlignment(Alignment::Start)
-                ->extraAttributes([
-                    'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
-                ])
-                ->mutateDehydratedStateUsing(function ($state) {
-                    if (is_array($state)) {
-                        // Filter out completely empty rows
-                        return array_values(array_filter($state, function ($item) {
-                            return ! empty(array_filter($item ?? []));
-                        }));
-                    }
-                    dd($state);
-
-                    return $state;
-                }),
+                ]),
+            TextInput::make('total_request_amount')
+                    // ->numeric()
+                ->readOnly()
+                ->dehydrated(false)
+                ->prefix('Rp')
+                ->mask(RawJs::make('$money($input, \',\', \'.\', 2)')),
         ];
     }
 
