@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\COAType;
 use App\Enums\DPRStatus;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -69,9 +71,10 @@ class Coa extends Model
     // SCOPES
     // ============================================
 
-    public function scopeActive($query)
+    #[Scope]
+    protected function active(Builder $query): void
     {
-        return $query->where('is_active', true);
+        $query->where('is_active', 1);
     }
 
     public function scopeProgramType($query)

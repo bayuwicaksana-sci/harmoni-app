@@ -90,7 +90,7 @@ class RequestItem extends Model implements HasMedia
         'realization_date' => 'date',
     ];
 
-    protected $appends = ['total_amount', 'total_act_amount', 'tax_amount', 'net_amount'];
+    protected $appends = ['total_amount', 'total_act_amount', 'tax_amount', 'net_amount', 'transfer_amount'];
 
     protected static function booted()
     {
@@ -242,6 +242,32 @@ class RequestItem extends Model implements HasMedia
                 }
 
                 return $netAmount;
+            },
+        );
+    }
+
+    protected function transferAmount(): Attribute
+    {
+        return new Attribute(
+            get: function () {
+                // Handle null values
+                if (! $this->is_taxed || is_null($this->tax_id) || is_null($this->tax_method)) {
+                    return null;
+                }
+
+                $transferAmount = 0;
+
+                if ($this->tax_method === TaxMethod::ToSCI) {
+                    $transferAmount += $this->payment_type === RequestPaymentType::Advance ? $this->total_amount : $this->total_act_amount;
+                } else {
+                    if ($this->payment_type === RequestPaymentType::Advance) {
+                        $transferAmount += $this->total_amount - ($this->total_amount * $this->tax->value);
+                    } else {
+                        $transferAmount += $this->total_act_amount - ($this->total_act_amount * $this->tax->value);
+                    }
+                }
+
+                return $transferAmount;
             },
         );
     }

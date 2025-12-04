@@ -18,7 +18,9 @@ class ListDailyPaymentRequests extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->authorize('create')
+                ->authorizationTooltip(),
         ];
     }
 
@@ -27,7 +29,7 @@ class ListDailyPaymentRequests extends ListRecords
         return [
             'all' => Tab::make('Semua Request')->modifyQueryUsing(function (Builder $query) {
                 if (Auth::user()->employee->jobTitle->jobLevel->level === 5 || Auth::user()->employee->jobTitle->department->code === 'FIN') {
-
+                    $query->whereNot('status', DPRStatus::Draft);
                 } else {
                     $query->where('status', DPRStatus::Pending)->where('requester_id', Auth::user()->employee->id);
                 }

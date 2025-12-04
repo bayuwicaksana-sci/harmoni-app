@@ -145,11 +145,11 @@ class ViewSettlement extends ViewRecord
                 ->color(fn () => $this->record->revision_notes
                     ? 'warning'
                     : 'gray'
-                )
-                ->visible(fn () => ($this->record->status === SettlementStatus::Draft || $this->record->status === SettlementStatus::WaitingRefund)
-                    && $this->record->submitter_id === Auth::user()->employee?->id
-                    && ! ($this->record->generatedPaymentRequest !== null)
                 ),
+            // ->visible(fn () => ($this->record->status === SettlementStatus::Draft || $this->record->status === SettlementStatus::WaitingRefund)
+            //     && $this->record->submitter_id === Auth::user()->employee?->id
+            //     && ! ($this->record->generatedPaymentRequest !== null)
+            // ),
         ];
     }
 }

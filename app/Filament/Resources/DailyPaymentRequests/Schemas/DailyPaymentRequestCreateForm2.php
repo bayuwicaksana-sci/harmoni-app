@@ -77,7 +77,7 @@ class DailyPaymentRequestCreateForm2
                     Select::make('coa_id')
                         ->label('COA')
                         ->options(Coa::query()->pluck('name', 'id'))
-                        ->native(false)
+                        ->native(true)
                         ->live()
                         ->requiredWith('item,qty,unit_qty,base_price')
                         ->validationMessages([

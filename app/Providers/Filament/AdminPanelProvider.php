@@ -9,8 +9,8 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -56,7 +56,12 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->sidebarWidth("16rem")
+            ->registerErrorNotification(
+                title: 'Record not found',
+                body: 'A record you are looking for does not exist.',
+                statusCode: 404,
+            )
+            ->sidebarWidth('16rem')
             ->sidebarCollapsibleOnDesktop()
             ->maxContentWidth(Width::ScreenTwoExtraLarge)
             ->viteTheme('resources/css/filament/admin/theme.css');

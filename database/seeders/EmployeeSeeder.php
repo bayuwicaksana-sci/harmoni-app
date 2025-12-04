@@ -4,9 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\JobGrade;
 use App\Models\JobTitle;
-use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -38,7 +36,6 @@ class EmployeeSeeder extends Seeder
         $grade4 = JobGrade::where('numeric_value', 4)->first();
         $grade5 = JobGrade::where('numeric_value', 5)->first();
 
-
         $allEmployeeData = [
             [ // Cahyo
                 'user_data' => [
@@ -59,8 +56,8 @@ class EmployeeSeeder extends Seeder
                     'job_title_id' => $ceo->id,
                     'job_grade_id' => $grade4->id,
                     'bank_account_number' => '1370016965408',
-                    'bank_cust_name' => 'Cahyo Adileksana'
-                ]
+                    'bank_cust_name' => 'Cahyo Adileksana',
+                ],
             ],
             [ // Situt
                 'user_data' => [
@@ -81,8 +78,8 @@ class EmployeeSeeder extends Seeder
                     'job_grade_id' => $grade1->id,
                     'bank_name' => 'BCA',
                     'bank_account_number' => '4560846466',
-                    'bank_cust_name' => 'Situt Setiawan'
-                ]
+                    'bank_cust_name' => 'Situt Setiawan',
+                ],
             ],
             [ // Ananta CHECK
                 'user_data' => [
@@ -103,15 +100,15 @@ class EmployeeSeeder extends Seeder
                     'job_grade_id' => $grade4->id,
                     'bank_name' => 'Mandiri',
                     'bank_account_number' => '1850002963269',
-                    'bank_cust_name' => 'Ananta Bayu Pratama'
-                ]
+                    'bank_cust_name' => 'Ananta Bayu Pratama',
+                ],
             ],
             [ // Fitria
                 'user_data' => [
                     'name' => 'Fitria Alhumaira',
                     'email' => 'fitria.alhumaira@scindonesia.org',
                     'email_verified_at' => Carbon::now(),
-                    'password' => Hash::make('Ananta@Harmoni'),
+                    'password' => Hash::make('Fitria@Harmoni'),
                     'user_type' => 'internal',
                     'is_active' => true,
                     'created_at' => Carbon::now(),
@@ -125,15 +122,15 @@ class EmployeeSeeder extends Seeder
                     'job_grade_id' => $grade1->id,
                     'bank_name' => 'Mandiri',
                     'bank_account_number' => '1370015368695',
-                    'bank_cust_name' => 'Fitria Alhumaira'
-                ]
+                    'bank_cust_name' => 'Fitria Alhumaira',
+                ],
             ],
             [ // Sofiana CHECK
                 'user_data' => [
                     'name' => 'Sofiana Nur Khasanah',
                     'email' => 'sofiana.khasanah@scindonesia.org',
                     'email_verified_at' => Carbon::now(),
-                    'password' => Hash::make('Sofi@Harmoni'),
+                    'password' => Hash::make('Sofiana@Harmoni'),
                     'user_type' => 'internal',
                     'is_active' => true,
                     'created_at' => Carbon::now(),
@@ -147,8 +144,8 @@ class EmployeeSeeder extends Seeder
                     'job_grade_id' => $grade3->id,
                     'bank_name' => 'Mandiri',
                     'bank_account_number' => '1380020780206',
-                    'bank_cust_name' => 'Sofiana Nur Khasanah'
-                ]
+                    'bank_cust_name' => 'Sofiana Nur Khasanah',
+                ],
             ],
             [ // Sunita
                 'user_data' => [
@@ -169,8 +166,8 @@ class EmployeeSeeder extends Seeder
                     'job_grade_id' => $grade3->id,
                     'bank_name' => 'Mandiri',
                     'bank_account_number' => '1510016696335',
-                    'bank_cust_name' => 'Sunita Ayu Purnamaningsi'
-                ]
+                    'bank_cust_name' => 'Sunita Ayu Purnamaningsi',
+                ],
             ],
             [ // Bhaskara
                 'user_data' => [
@@ -191,8 +188,8 @@ class EmployeeSeeder extends Seeder
                     'job_grade_id' => $grade3->id,
                     'bank_name' => null,
                     'bank_account_number' => null,
-                    'bank_cust_name' => null
-                ]
+                    'bank_cust_name' => null,
+                ],
             ],
             [ // Dedy
                 'user_data' => [
@@ -213,8 +210,8 @@ class EmployeeSeeder extends Seeder
                     'job_grade_id' => $grade2->id,
                     'bank_name' => 'Mandiri',
                     'bank_account_number' => '1510021016909',
-                    'bank_cust_name' => 'Dedy Wahyu Rizaldy'
-                ]
+                    'bank_cust_name' => 'Dedy Wahyu Rizaldy',
+                ],
             ],
             [ // Syair
                 'user_data' => [
@@ -235,8 +232,8 @@ class EmployeeSeeder extends Seeder
                     'job_grade_id' => $grade2->id,
                     'bank_name' => 'Mandiri',
                     'bank_account_number' => '1700016409892',
-                    'bank_cust_name' => 'Muh. Syair'
-                ]
+                    'bank_cust_name' => 'Muh. Syair',
+                ],
             ],
             [ // Maria
                 'user_data' => [
@@ -257,8 +254,8 @@ class EmployeeSeeder extends Seeder
                     'job_grade_id' => $grade2->id,
                     'bank_name' => 'Mandiri',
                     'bank_account_number' => '1150006837548',
-                    'bank_cust_name' => 'Maria Ririh Handayani'
-                ]
+                    'bank_cust_name' => 'Maria Ririh Handayani',
+                ],
             ],
             [ // Bayu
                 'user_data' => [
@@ -279,8 +276,8 @@ class EmployeeSeeder extends Seeder
                     'job_grade_id' => $grade2->id,
                     'bank_name' => 'Mandiri',
                     'bank_account_number' => '1370020827420',
-                    'bank_cust_name' => 'Bayu Ajiwicaksana'
-                ]
+                    'bank_cust_name' => 'Bayu Ajiwicaksana',
+                ],
             ],
             [ // Sofa
                 'user_data' => [
@@ -301,8 +298,8 @@ class EmployeeSeeder extends Seeder
                     'job_grade_id' => $grade2->id,
                     'bank_name' => 'Mandiri',
                     'bank_account_number' => '1380020857269',
-                    'bank_cust_name' => 'Sofa Afi Rahmawati'
-                ]
+                    'bank_cust_name' => 'Sofa Afi Rahmawati',
+                ],
             ],
         ];
 

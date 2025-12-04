@@ -350,18 +350,19 @@ class RequestItemsRelationManager extends RelationManager
                 TextColumn::make('due_date')
                     ->label('Tenggat Waktu Realisasi')
                     ->date('j M Y', 'Asia/Jakarta')
+                    ->timezone('Asia/Jakarta')
                     ->placeholder('N/A'),
                 ToggleColumn::make('is_taxed')
-                    ->disabled(fn ($record) => $record->status === RequestItemStatus::Closed || $record->status === RequestItemStatus::WaitingSettlement || $record->status === RequestItemStatus::Cancelled || $record->status === RequestItemStatus::Rejected)
+                    ->disabled(fn ($record) => $record->status === RequestItemStatus::Closed || $record->status === RequestItemStatus::WaitingSettlement || $record->status === RequestItemStatus::WaitingSettlementReview || $record->status === RequestItemStatus::Cancelled || $record->status === RequestItemStatus::Rejected)
                     ->label('Dikenai Pajak?')
                     ->hidden(fn () => Auth::user()->employee->jobTitle->department->code !== 'FIN'),
                 SelectColumn::make('tax_id')
-                    ->disabled(fn ($record) => ! $record->is_taxed || $record->status === RequestItemStatus::Closed || $record->status === RequestItemStatus::WaitingSettlement || $record->status === RequestItemStatus::Cancelled || $record->status === RequestItemStatus::Rejected)
+                    ->disabled(fn ($record) => ! $record->is_taxed || $record->status === RequestItemStatus::Closed || $record->status === RequestItemStatus::WaitingSettlement || $record->status === RequestItemStatus::WaitingSettlementReview || $record->status === RequestItemStatus::Cancelled || $record->status === RequestItemStatus::Rejected)
                     ->hidden(fn () => Auth::user()->employee->jobTitle->department->code !== 'FIN')
                     ->optionsRelationship('tax', 'name')
                     ->label('Tipe Pajak'),
                 SelectColumn::make('tax_method')
-                    ->disabled(fn ($record) => ! $record->is_taxed || $record->status === RequestItemStatus::Closed || $record->status === RequestItemStatus::WaitingSettlement || $record->status === RequestItemStatus::Cancelled || $record->status === RequestItemStatus::Rejected)
+                    ->disabled(fn ($record) => ! $record->is_taxed || $record->status === RequestItemStatus::Closed || $record->status === RequestItemStatus::WaitingSettlement || $record->status === RequestItemStatus::WaitingSettlementReview || $record->status === RequestItemStatus::Cancelled || $record->status === RequestItemStatus::Rejected)
                     ->hidden(fn () => Auth::user()->employee->jobTitle->department->code !== 'FIN')
                     ->options(TaxMethod::class)
                     ->label('Penanggung Pajak'),
@@ -401,7 +402,7 @@ class RequestItemsRelationManager extends RelationManager
                         $record->save();
                     })
                     ->successNotificationTitle('Tenggat Waktu Diubah')
-                    ->hidden(fn ($record) => ($record->payment_type === RequestPaymentType::Reimburse || Auth::user()->employee->jobTitle->code !== 'FO') && ! ($record->status === RequestItemStatus::WaitingSettlement || $record->status === RequestItemStatus::WaitingSettlementReview)),
+                    ->hidden(fn ($record) => ($record->payment_type === RequestPaymentType::Reimburse || Auth::user()->employee->jobTitle->code !== 'FO') || ! ($record->status === RequestItemStatus::WaitingSettlement || $record->status === RequestItemStatus::WaitingSettlementReview)),
                 ViewAction::make()
                     ->modalWidth(Width::SevenExtraLarge),
                 EditAction::make()

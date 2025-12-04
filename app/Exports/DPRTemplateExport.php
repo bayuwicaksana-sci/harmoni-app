@@ -2,11 +2,13 @@
 
 namespace App\Exports;
 
+use App\Enums\COAType;
 use App\Models\Coa;
+use App\Models\Program;
 use App\Models\ProgramActivity;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
@@ -27,7 +29,7 @@ class DPRTemplateExport implements WithMultipleSheets
     {
         return [
             new RequestItemSheet($this->data),
-            // new ProgramsSheet($this->data),
+            new ReferenceSheet,
             // new ProgramActivitiesSheet($this->data),
             // new ProgramActivityItemsSheet($this->data),
         ];
@@ -35,7 +37,7 @@ class DPRTemplateExport implements WithMultipleSheets
 }
 
 // Client Data Sheet (Step 1)
-class RequestItemSheet implements FromCollection, WithColumnFormatting, WithColumnWidths, WithHeadings, WithStyles, WithTitle
+class RequestItemSheet implements FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
 {
     protected $data;
 
@@ -53,7 +55,19 @@ class RequestItemSheet implements FromCollection, WithColumnFormatting, WithColu
     {
         return [
             ['List Request Item'],
-            ['Kode COA', 'Aktivitas', 'Deskripsi Item', 'Qty', 'Unit Qty', 'Harga Per Item', 'Tipe Request (reimburse/advance)', 'Nama Bank', 'Nomor Rekening', 'Nama Pemilik Rekening', 'Keterangan'],
+            [
+                'Kode COA',
+                'Aktivitas',
+                'Deskripsi Item',
+                'Qty',
+                'Unit Qty',
+                'Harga Per Item',
+                'Tipe Request (reimburse/advance)',
+                'Nama Bank',
+                'Nomor Rekening',
+                'Nama Pemilik Rekening',
+                'Keterangan',
+            ],
         ];
     }
 
@@ -98,24 +112,95 @@ class RequestItemSheet implements FromCollection, WithColumnFormatting, WithColu
             'A' => 45,
             'B' => 45,
             'C' => 45,
-            'D' => 25,
-            'E' => 25,
-            'F' => 45,
-            'G' => 45,
-            'H' => 45,
-            'I' => 45,
-            'J' => 45,
+            'D' => 15,
+            'E' => 15,
+            'F' => 30,
+            'G' => 25,
+            'H' => 25,
+            'I' => 25,
+            'J' => 25,
             'K' => 45,
-            'L' => 45,
+        ];
+    }
+}
+
+class ReferenceSheet implements FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
+{
+    public function title(): string
+    {
+        return 'Referensi COA';
+    }
+
+    public function headings(): array
+    {
+        return [
+            ['Referensi COA'],
+            ['Kode COA', 'Nama COA', 'Nama Aktivitas'],
         ];
     }
 
-    // public function columnFormats(): array
-    // {
-    //     return [
-    //         'I' => \PhpOffice\PhpSpreadsheet\Sty,
-    //     ];
-    // }
+    public function styles(Worksheet $sheet)
+    {
+        return [
+            1 => ['font' => ['bold' => true, 'size' => 14]],
+            2 => ['font' => ['bold' => true]],
+        ];
+    }
+
+    public function columnWidths(): array
+    {
+        return [
+            'A' => 35,
+            'B' => 35,
+            'C' => 45,
+        ];
+    }
+
+    public function collection()
+    {
+        $employee = Auth::user()->employee;
+
+        // Get client IDs from employee's programs through partnership contracts
+        $clientIds = $employee->programs()
+            ->with('partnershipContracts.client')
+            ->get()
+            ->pluck('partnershipContracts')
+            ->flatten()
+            ->pluck('client_id')
+            ->unique();
+
+        // Get all programs from those clients (through partnership contracts)
+        $clientProgramIds = Program::whereHas('partnershipContracts', function ($query) use ($clientIds) {
+            $query->whereIn('partnership_contracts.client_id', $clientIds);
+        })->pluck('id');
+
+        // Get ProgramActivities with Program-type COAs (filtered by client's programs)
+        $programActivities = ProgramActivity::active()
+            ->whereHas('coa', function ($query) use ($clientProgramIds) {
+                $query->where('type', COAType::Program)
+                    ->whereIn('program_id', $clientProgramIds);
+            })
+            ->with('coa')
+            ->get()
+            ->map(fn ($activity) => [
+                $activity->coa->code,
+                $activity->name,
+            ]);
+
+        // Get all Non-Program COAs
+        $nonProgramCoas = COA::where('type', '!=', COAType::Program)
+            ->get()
+            ->map(fn ($coa) => [
+                $coa->code,
+                $coa->name,
+            ]);
+
+        // Merge both collections
+
+        // dd($programActivities->concat($nonProgramCoas));
+
+        return $programActivities->concat($nonProgramCoas);
+    }
 }
 
 // // Programs Sheet (Step 2)

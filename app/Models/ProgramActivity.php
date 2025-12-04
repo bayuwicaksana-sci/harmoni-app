@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class ProgramActivity extends Model
 {
@@ -17,7 +16,7 @@ class ProgramActivity extends Model
         'coa_id',
         'est_start_date',
         'est_end_date',
-        'is_active'
+        'is_active',
     ];
 
     protected $casts = [
@@ -49,6 +48,6 @@ class ProgramActivity extends Model
     #[Scope]
     protected function active(Builder $query): void
     {
-        $query->where('is_active', true);
+        $query->where('is_active', 1);
     }
 }

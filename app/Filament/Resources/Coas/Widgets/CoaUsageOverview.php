@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Coas\Widgets;
 
+use App\Enums\COAType;
 use App\Models\Coa;
 use App\Models\RequestItem;
 use Filament\Widgets\StatsOverviewWidget;
@@ -52,7 +53,8 @@ class CoaUsageOverview extends StatsOverviewWidget
                         <div class="'.$textColorClass.' font-semibold">Rp '.number_format(abs($variance), 2, ',', '.').'</div>
                     </div>
                 </div>');
-            }),
+            })
+                ->hidden($this->record->type !== COAType::Program),
         ];
     }
 

@@ -243,10 +243,37 @@ class CreateDailyPaymentRequest extends CreateRecord
                     $file = storage_path('app/private/'.$data['file']);
                     $import = new DPRTemplateImport;
                     $importedPaymentRequestData = Excel::toArray($import, $file);
+                    @unlink($file);
 
-                    dd($importedPaymentRequestData);
+                    // dd($importedPaymentRequestData);
 
-                    $livewire->data = $importedPaymentRequestData;
+                    $requestItems = [];
+
+                    foreach ($importedPaymentRequestData as $sheetIndex => $sheet) {
+                        foreach ($sheet as $rowIndex => $row) {
+                            if ($rowIndex >= 2) {
+                                $requestItems[] = [
+                                    'coa_id' => $row['0'] ? Coa::where('code', $row['0'])->first()->id : null,
+                                    'program_activity_id' => $row['1'] ? ($row['0'] ? ProgramActivity::whereCoaId($row['0'])->where('name', $row['1'])->first()->id : null) : null,
+                                    'item' => $row['2'] ?? null,
+                                    'qty' => (int) $row['3'] ?? null,
+                                    'unit_qty' => $row['4'] ?? null,
+                                    'base_price' => (float) $row['5'] ?? null,
+                                    'total_price' => (float) ((float) $row['4'] * (float) $row['5']) ?? null,
+                                    'payment_type' => RequestPaymentType::tryFrom($row['6']),
+                                    'self_account' => Auth::user()->employee->bank_account_number === (string) $row['8'],
+                                    'bank_name' => (Auth::user()->employee->bank_account_number === (string) $row['8'] ? Auth::user()->employee->bank_name : $row['7']) ?? null,
+                                    'bank_account' => (Auth::user()->employee->bank_account_number === (string) $row['8'] ? Auth::user()->employee->bank_account_number : $row['8']) ?? null,
+                                    'account_owner' => (Auth::user()->employee->bank_account_number === (string) $row['8'] ? Auth::user()->employee->bank_cust_name : $row['9']) ?? null,
+                                    'notes' => $row['10'] ?? null,
+                                ];
+                            }
+                        }
+                    }
+
+                    $livewire->data = ['requestItems' => $requestItems];
+
+                    // dd($livewire);
 
                     Notification::make()
                         ->success()

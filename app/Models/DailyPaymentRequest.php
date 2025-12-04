@@ -141,7 +141,7 @@ class DailyPaymentRequest extends Model implements HasMedia
     {
         return new Attribute(
             get: function () {
-                $total = $this->requestItems->where('payment_type', RequestPaymentType::Advance)->sum('net_amount') + $this->requestItems->where('payment_type', RequestPaymentType::Reimburse)->sum('net_amount') + $this->requestItems->where('payment_type', RequestPaymentType::Offset)->sum('net_amount');
+                $total = $this->requestItems->where('payment_type', RequestPaymentType::Advance)->sum('transfer_amount') + $this->requestItems->where('payment_type', RequestPaymentType::Reimburse)->sum('transfer_amount') + $this->requestItems->where('payment_type', RequestPaymentType::Offset)->sum('transfer_amount');
 
                 return $total > 0 ? $total : 0;
             }

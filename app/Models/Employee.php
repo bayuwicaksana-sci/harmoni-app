@@ -45,6 +45,11 @@ class Employee extends Model
         return $this->hasMany(ApprovalHistory::class, 'approver_id');
     }
 
+    public function programs(): HasMany
+    {
+        return $this->hasMany(Program::class);
+    }
+
     // Helper Methods
     public function getJobLevel(): int
     {

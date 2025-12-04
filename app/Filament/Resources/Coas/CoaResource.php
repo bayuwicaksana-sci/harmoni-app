@@ -20,9 +20,9 @@ class CoaResource extends Resource
 {
     protected static ?string $model = Coa::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = Heroicon::OutlinedChartBar;
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Program Driver';
+    protected static string|\UnitEnum|null $navigationGroup = 'Program Driver';
 
     protected static ?string $navigationLabel = 'Chart of Accounts';
 

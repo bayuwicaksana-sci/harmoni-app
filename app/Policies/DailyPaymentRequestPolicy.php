@@ -3,9 +3,10 @@
 namespace App\Policies;
 
 use App\Models\DailyPaymentRequest;
+use App\Models\RequestItem;
 use App\Models\User;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Builder;
 
 class DailyPaymentRequestPolicy
 {
@@ -28,9 +29,11 @@ class DailyPaymentRequestPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user): bool
+    public function create(User $user): Response
     {
-        return true;
+        return RequestItem::where('due_date', '<', now()->toDateString())->whereHas('dailyPaymentRequest', function (Builder $query) use ($user) {
+            $query->where('requester_id', $user->employee->id);
+        })->get()->first() ? Response::deny('Kamu memiliki Item yang belum di settle nih. Settle dulu ya!') : Response::allow();
     }
 
     /**

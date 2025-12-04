@@ -35,6 +35,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
@@ -775,10 +776,10 @@ class ListClients extends ListRecords
                                                 'qty' => $row[4] ?? null,
                                                 'unit_qty' => $row[5] ?? null,
                                                 'freq' => $row[6] ?? null,
-                                                'contract_unit_price' => $row[7] ?? null,
-                                                'contract_total_price' => $row[8] ?? null,
-                                                'planned_unit_price' => $row[9] ?? null,
-                                                'planned_total_price' => $row[10] ?? null,
+                                                'contract_unit_price' => (float) $row[7] ?? null,
+                                                'contract_total_price' => (float) $row[8] ?? null,
+                                                'planned_unit_price' => (float) $row[9] ?? null,
+                                                'planned_total_price' => (float) $row[10] ?? null,
                                             ];
                                             break;
                                     }
@@ -865,17 +866,21 @@ class ListClients extends ListRecords
                                                             )
                                                             ->schema([
                                                                 TextInput::make('pic_position')
+                                                                    ->label('Jabatan')
                                                                     ->placeholder('Jabatan PIC')
                                                                     ->trim(),
                                                                 TextInput::make('pic_name')
+                                                                    ->label('Nama PIC')
                                                                     ->required()
                                                                     ->placeholder('Ketikkan nama PIC')
                                                                     ->trim(),
                                                                 TextInput::make('pic_email')
+                                                                    ->label('Email PIC')
                                                                     ->placeholder('pic@mail.com')
                                                                     ->trim()
                                                                     ->email(),
                                                                 TextInput::make('pic_phone')
+                                                                    ->label('No. HP PIC')
                                                                     ->required()
                                                                     ->placeholder('081234567890')
                                                                     ->trim()
@@ -916,22 +921,26 @@ class ListClients extends ListRecords
                                             ->itemLabel(fn (array $state): ?string => $state['program_name'] ?? null)
                                             ->schema([
                                                 Select::make('program_category_id')
+                                                    ->label('Kategori Program')
                                                     ->required()
                                                     ->options(ProgramCategory::query()->pluck('name', 'id'))
                                                     ->default(1)
                                                     ->selectablePlaceholder(false)
                                                     ->columnSpan(2),
                                                 TextInput::make('program_name')
+                                                    ->label('Nama Program')
                                                     ->required()
                                                     ->live(onBlur: true)
                                                     ->trim()
                                                     ->columnSpan(2),
                                                 TextInput::make('description')
+                                                    ->label('Deskripsi Program')
                                                     ->required()
                                                     ->trim()
                                                     ->placeholder('Deskripsi program')
                                                     ->columnSpan(2),
                                                 Select::make('program_pic')
+                                                    ->label('Program PIC')
                                                     ->required()
                                                     ->options(function () {
                                                         static $options;
@@ -957,14 +966,17 @@ class ListClients extends ListRecords
                                                     ->itemLabel(fn (array $state): ?string => $state['activity_name'] ?? null)
                                                     ->schema([
                                                         TextInput::make('activity_name')
+                                                            ->label('Aktivitas Program')
                                                             ->required()
                                                             ->live(onBlur: true),
                                                         DatePicker::make('est_start_date')
+                                                            ->label('Estimasi Waktu Mulai')
                                                             ->required()
                                                             ->native(false)
                                                             ->default(now())
                                                             ->displayFormat('j M Y'),
                                                         DatePicker::make('est_end_date')
+                                                            ->label('Estimasi Waktu Selesai')
                                                             ->required()
                                                             ->native(false)
                                                             ->displayFormat('j M Y')
@@ -978,30 +990,421 @@ class ListClients extends ListRecords
                                                                 'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
                                                             ])
                                                             ->compact()
+                                                            ->addActionAlignment(Alignment::Start)
                                                             ->table([
-                                                                TableColumn::make('Detail Item')->width('280px'),
-                                                                TableColumn::make('Qty')->width('280px'),
-                                                                TableColumn::make('Unit Qty')->width('280px'),
-                                                                TableColumn::make('Frekuensi')->width('280px'),
-                                                                TableColumn::make('Harga Satuan (Kontrak)')->width('280px'),
-                                                                TableColumn::make('Harga Total (Kontrak)')->width('280px'),
-                                                                TableColumn::make('Harga Satuan (Planned)')->width('280px'),
-                                                                TableColumn::make('Harga Total (Planned)')->width('280px'),
+                                                                TableColumn::make('Deskripsi Item')->width('300px'),
+                                                                TableColumn::make('Qty')->width('100px'),
+                                                                TableColumn::make('Unit Qty')->width('180px'),
+                                                                TableColumn::make('Frekuensi')->width('100px'),
+                                                                TableColumn::make('Harga Satuan (Kontrak)')->width('200px')->wrapHeader(),
+                                                                TableColumn::make('Harga Total (Kontrak)')->width('200px')->wrapHeader(),
+                                                                TableColumn::make('Harga Satuan (Planned)')->width('200px')->wrapHeader(),
+                                                                TableColumn::make('Harga Total (Planned)')->width('200px')->wrapHeader(),
                                                             ])
                                                             ->schema([
-                                                                TextInput::make('description'),
-                                                                TextInput::make('qty'),
-                                                                TextInput::make('unit_qty'),
-                                                                TextInput::make('freq'),
-                                                                TextInput::make('contract_unit_price'),
-                                                                TextInput::make('contract_total_price'),
-                                                                TextInput::make('planned_unit_price'),
-                                                                TextInput::make('planned_total_price'),
+                                                                TextInput::make('description')
+                                                                    ->label('Deskripsi Item')
+                                                                    ->trim(),
+                                                                TextInput::make('qty')
+                                                                    ->label('Qty')
+                                                                    ->numeric()
+                                                                    ->minValue(1)
+                                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                                        const contractBasePrice = ($get('contract_unit_price') ?? '0').toString().replace(/\./g, '').replace(',', '.');
+                                                                        const plannedBasePrice = ($get('planned_unit_price') ?? '0').toString().replace(/\./g, '').replace(',', '.');
+                                                                        const contractBasePriceNum = parseFloat(contractBasePrice) || 0;
+                                                                        const plannedBasePriceNum = parseFloat(plannedBasePrice) || 0;
+                                                                        const qtyNum = parseFloat($state) || 0;
+                                                                        const freqNum = parseFloat($get('freq')) || 0;
+                                                                        const contractTotal = qtyNum * freqNum * contractBasePriceNum;
+                                                                        const plannedTotal = qtyNum * freqNum *  plannedBasePriceNum;
+
+                                                                        if (contractTotal === 0 || plannedTotal === 0) {
+                                                                            $set('contract_total_price', '');
+                                                                            $set('planned_total_price', '');
+                                                                        } else {
+                                                                            const formattedContract = contractTotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1');
+                                                                            const formattedPlanned = plannedTotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1');
+                                                                            $set('contract_total_price', formattedContract);
+                                                                            $set('planned_total_price', formattedPlanned);
+                                                                        }
+                                                                    JS),
+                                                                TextInput::make('unit_qty')
+                                                                    ->label('Unit Qty')
+                                                                    ->trim(),
+                                                                TextInput::make('freq')
+                                                                    ->label('Frekuensi')
+                                                                    ->numeric()
+                                                                    ->minValue(1)
+                                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                                        const contractBasePrice = ($get('contract_unit_price') ?? '0').toString().replace(/\./g, '').replace(',', '.');
+                                                                        const plannedBasePrice = ($get('planned_unit_price') ?? '0').toString().replace(/\./g, '').replace(',', '.');
+                                                                        const contractBasePriceNum = parseFloat(contractBasePrice) || 0;
+                                                                        const plannedBasePriceNum = parseFloat(plannedBasePrice) || 0;
+                                                                        const qtyNum = parseFloat($get('qty')) || 0;
+                                                                        const freqNum = parseFloat($state) || 0;
+                                                                        const contractTotal = qtyNum * freqNum * contractBasePriceNum;
+                                                                        const plannedTotal = qtyNum * freqNum *  plannedBasePriceNum;
+
+                                                                        if (contractTotal === 0 || plannedTotal === 0) {
+                                                                            $set('contract_total_price', '');
+                                                                            $set('planned_total_price', '');
+                                                                        } else {
+                                                                            const formattedContract = contractTotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1');
+                                                                            const formattedPlanned = plannedTotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1');
+                                                                            $set('contract_total_price', formattedContract);
+                                                                            $set('planned_total_price', formattedPlanned);
+                                                                        }
+                                                                    JS),
+                                                                TextInput::make('contract_unit_price')
+                                                                    ->label('Harga Satuan (Kontrak)')
+                                                                    ->numeric()
+                                                                    ->prefix('Rp', true)
+                                                                    ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
+                                                                    ->dehydrateStateUsing(fn ($rawState) => (float) str_replace(['.', ','], ['', '.'], $rawState))
+                                                                    ->stripCharacters(['.', ','])
+                                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                                        const cleanPrice = ($state ?? '0').toString().replace(/\./g, '').replace(',', '.');
+                                                                        const priceNum = parseFloat(cleanPrice) || 0;
+                                                                        const qtyNum = parseFloat($get('qty')) || 0;
+                                                                        const freqNum = parseFloat($get('freq')) || 0;
+                                                                        const total = qtyNum * freqNum * priceNum;
+
+                                                                        if (total === 0) {
+                                                                            $set('contract_total_price', '');
+                                                                        } else {
+                                                                            const formatted = total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1');
+                                                                            $set('contract_total_price', formatted);
+                                                                        }
+                                                                    JS),
+                                                                TextInput::make('contract_total_price')
+                                                                    ->label('Harga Total (Kontrak)')
+                                                                    ->numeric()
+                                                                    ->readOnly()
+                                                                    ->prefix('Rp', true)
+                                                                    ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
+                                                                    ->dehydrateStateUsing(fn ($rawState) => (float) str_replace(['.', ','], ['', '.'], $rawState))
+                                                                    ->stripCharacters(['.', ','])
+                                                                    ->minValue(1),
+                                                                TextInput::make('planned_unit_price')
+                                                                    ->label('Harga Satuan (Planned)')
+                                                                    ->numeric()
+                                                                    ->prefix('Rp', true)
+                                                                    ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
+                                                                    ->dehydrateStateUsing(fn ($rawState) => (float) str_replace(['.', ','], ['', '.'], $rawState))
+                                                                    ->stripCharacters(['.', ','])
+                                                                    ->minValue(1)
+                                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                                        const cleanPrice = ($state ?? '0').toString().replace(/\./g, '').replace(',', '.');
+                                                                        const priceNum = parseFloat(cleanPrice) || 0;
+                                                                        const qtyNum = parseFloat($get('qty')) || 0;
+                                                                        const freqNum = parseFloat($get('freq')) || 0;
+                                                                        const total = qtyNum * freqNum * priceNum;
+
+                                                                        if (total === 0) {
+                                                                            $set('planned_total_price', '');
+                                                                        } else {
+                                                                            const formatted = total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1');
+                                                                            $set('planned_total_price', formatted);
+                                                                        }
+                                                                    JS),
+                                                                TextInput::make('planned_total_price')
+                                                                    ->label('Harga Total (Kontrak)')
+                                                                    ->numeric()
+                                                                    ->readOnly()
+                                                                    ->prefix('Rp', true)
+                                                                    ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
+                                                                    ->dehydrateStateUsing(fn ($rawState) => (float) str_replace(['.', ','], ['', '.'], $rawState))
+                                                                    ->stripCharacters(['.', ','])
+                                                                    ->minValue(1),
                                                             ]),
                                                     ]),
 
                                             ]),
                                     ]),
+                                // Step::make('Review')
+                                //     ->schema([
+                                //         Fieldset::make('Detail Klien dan Kontrak Kerja')
+                                //             ->columns(6)
+                                //             ->schema([
+                                //                 TextEntry::make('client_name')
+                                //                     ->label('Nama Klien')
+                                //                     ->state(fn (Get $get) => $get('client_name').' ('.$get('client_slug').')'),
+                                //                 TextEntry::make('contract_year_review')
+                                //                     ->label('Tahun Kontrak')
+                                //                     ->state(fn (Get $get) => $get('contract_year')),
+                                //                 TextEntry::make('start_date_review')
+                                //                     ->label('Awal Periode')
+                                //                     ->state(fn (Get $get) => $get('start_period'))
+                                //                     ->date('j M Y'),
+                                //                 TextEntry::make('end_date_review')
+                                //                     ->label('Akhir Periode')
+                                //                     ->state(fn (Get $get) => $get('end_period'))
+                                //                     ->date('j M Y'),
+                                //                 TextEntry::make('total_contract_value')
+                                //                     ->label('Nilai Kontrak')
+                                //                     ->state(function (Get $get) {
+                                //                         static $cached = null;
+                                //                         static $cacheKey = null;
+
+                                //                         $currentKey = md5(json_encode($get('programs') ?? []));
+
+                                //                         if ($cached === null || $cacheKey !== $currentKey) {
+                                //                             $totalContractValue = 0;
+                                //                             $totalPlannedValue = 0;
+
+                                //                             foreach ($get('programs') ?? [] as $program) {
+                                //                                 foreach ($program['program_activities'] ?? [] as $activity) {
+                                //                                     foreach ($activity['items'] ?? [] as $item) {
+                                //                                         $totalContractValue += (float) ($item['contract_total_price'] ?? 0);
+                                //                                         $totalPlannedValue += (float) ($item['planned_total_price'] ?? 0);
+                                //                                     }
+                                //                                 }
+                                //                             }
+
+                                //                             $cached = compact('totalContractValue', 'totalPlannedValue');
+                                //                             $cacheKey = $currentKey;
+                                //                         }
+
+                                //                         return $cached['totalContractValue'];
+                                //                     })
+                                //                     ->belowContent(function ($state, Get $get) {
+                                //                         static $cached = null;
+                                //                         static $cacheKey = null;
+
+                                //                         $currentKey = md5(json_encode($get('programs') ?? []));
+
+                                //                         if ($cached === null || $cacheKey !== $currentKey) {
+                                //                             $totalContractValue = 0;
+                                //                             $totalPlannedValue = 0;
+
+                                //                             foreach ($get('programs') ?? [] as $program) {
+                                //                                 foreach ($program['program_activities'] ?? [] as $activity) {
+                                //                                     foreach ($activity['items'] ?? [] as $item) {
+                                //                                         $totalContractValue += (float) ($item['contract_total_price'] ?? 0);
+                                //                                         $totalPlannedValue += (float) ($item['planned_total_price'] ?? 0);
+                                //                                     }
+                                //                                 }
+                                //                             }
+
+                                //                             $cached = compact('totalContractValue', 'totalPlannedValue');
+                                //                             $cacheKey = $currentKey;
+                                //                         }
+
+                                //                         $totalPlannedValue = $cached['totalPlannedValue'];
+
+                                //                         if ((float) $state === 0.0 || (float) $totalPlannedValue === 0.0) {
+                                //                             return 'Margin 0%';
+                                //                         }
+
+                                //                         return 'Margin '.round(((((float) $state - (float) $totalPlannedValue) / (float) $state) * 100), 2).'%';
+                                //                     })
+                                //                     ->money(currency: 'IDR', locale: 'id'),
+                                //                 TextEntry::make('total_planned_value')
+                                //                     ->label('Nilai Planned')
+                                //                     ->state(function (Get $get) {
+                                //                         static $cached = null;
+                                //                         static $cacheKey = null;
+
+                                //                         $currentKey = md5(json_encode($get('programs') ?? []));
+
+                                //                         if ($cached === null || $cacheKey !== $currentKey) {
+                                //                             $totalContractValue = 0;
+                                //                             $totalPlannedValue = 0;
+
+                                //                             foreach ($get('programs') ?? [] as $program) {
+                                //                                 foreach ($program['program_activities'] ?? [] as $activity) {
+                                //                                     foreach ($activity['items'] ?? [] as $item) {
+                                //                                         $totalContractValue += (float) ($item['contract_total_price'] ?? 0);
+                                //                                         $totalPlannedValue += (float) ($item['planned_total_price'] ?? 0);
+                                //                                     }
+                                //                                 }
+                                //                             }
+
+                                //                             $cached = compact('totalContractValue', 'totalPlannedValue');
+                                //                             $cacheKey = $currentKey;
+                                //                         }
+
+                                //                         return $cached['totalPlannedValue'];
+                                //                     })
+                                //                     ->belowContent(function ($state, Get $get) {
+                                //                         static $cached = null;
+                                //                         static $cacheKey = null;
+
+                                //                         $currentKey = md5(json_encode($get('programs') ?? []));
+
+                                //                         if ($cached === null || $cacheKey !== $currentKey) {
+                                //                             $totalContractValue = 0;
+                                //                             $totalPlannedValue = 0;
+
+                                //                             foreach ($get('programs') ?? [] as $program) {
+                                //                                 foreach ($program['program_activities'] ?? [] as $activity) {
+                                //                                     foreach ($activity['items'] ?? [] as $item) {
+                                //                                         $totalContractValue += (float) ($item['contract_total_price'] ?? 0);
+                                //                                         $totalPlannedValue += (float) ($item['planned_total_price'] ?? 0);
+                                //                                     }
+                                //                                 }
+                                //                             }
+
+                                //                             $cached = compact('totalContractValue', 'totalPlannedValue');
+                                //                             $cacheKey = $currentKey;
+                                //                         }
+
+                                //                         $totalContractValue = $cached['totalContractValue'];
+
+                                //                         if ((float) $state === 0.0 || (float) $totalContractValue === 0.0) {
+                                //                             return '0%';
+                                //                         }
+
+                                //                         return round((((float) $state / (float) $totalContractValue) * 100), 2).'%';
+                                //                     })
+                                //                     ->money(currency: 'IDR', locale: 'id'),
+                                //                 RepeatableEntry::make('pics')
+                                //                     ->columnSpanFull()
+                                //                     ->label('PIC Klien')
+                                //                     ->state(function (Get $get) {
+                                //                         return $get('client_pics');
+                                //                     })
+                                //                     ->table([
+                                //                         TableColumn::make('Jabatan PIC'),
+                                //                         TableColumn::make('Nama PIC'),
+                                //                         TableColumn::make('Email PIC'),
+                                //                         TableColumn::make('No. HP PIC'),
+                                //                     ])
+                                //                     ->schema([
+                                //                         TextEntry::make('pic_position'),
+                                //                         TextEntry::make('pic_name'),
+                                //                         TextEntry::make('pic_email'),
+                                //                         TextEntry::make('pic_phone'),
+                                //                     ])
+                                //                     ->contained(false),
+                                //             ]),
+                                //         RepeatableEntry::make('programs_review')
+                                //             ->label('Daftar Program')
+                                //             ->state(function (Get $get) {
+                                //                 $programs = $get('programs') ?? [];
+                                //                 $results = [];
+
+                                //                 // Single pass through nested structure - O(n)
+                                //                 foreach ($programs as $program) {
+                                //                     if (empty($program['program_name'])) {
+                                //                         continue;
+                                //                     }
+
+                                //                     $programData = [
+                                //                         'name' => $program['program_name'],
+                                //                         'program_category_id' => $program['program_category_id'] ?? 1,
+                                //                         'contract_budget' => 0,
+                                //                         'planned_budget' => 0,
+                                //                         'program_activity_items_review' => [],
+                                //                     ];
+
+                                //                     foreach ($program['program_activities'] ?? [] as $activity) {
+                                //                         $activityName = $activity['activity_name'] ?? null;
+
+                                //                         foreach ($activity['items'] ?? [] as $item) {
+                                //                             $contractPrice = (float) ($item['contract_total_price'] ?? 0);
+                                //                             $plannedPrice = (float) ($item['planned_total_price'] ?? 0);
+
+                                //                             $programData['contract_budget'] += $contractPrice;
+                                //                             $programData['planned_budget'] += $plannedPrice;
+
+                                //                             $programData['program_activity_items_review'][] = [
+                                //                                 'description' => $item['description'] ?? null,
+                                //                                 'program_activity_name' => $activityName,
+                                //                                 'quantity' => $item['qty'] ?? null,
+                                //                                 'unit' => $item['unit_qty'] ?? null,
+                                //                                 'frequency' => $item['freq'] ?? null,
+                                //                                 'total_item_budget' => $contractPrice,
+                                //                                 'total_item_planned_budget' => $plannedPrice,
+                                //                             ];
+                                //                         }
+                                //                     }
+
+                                //                     $results[] = $programData;
+                                //                 }
+
+                                //                 return $results;
+                                //             })
+                                //             ->schema([
+                                //                 Flex::make([
+                                //                     TextEntry::make('name')
+                                //                         ->grow(false)
+                                //                         ->hiddenLabel()
+                                //                         ->weight(FontWeight::ExtraBold),
+                                //                     TextEntry::make('program_category_id')
+                                //                         ->grow(true)
+                                //                         ->hiddenLabel()
+                                //                         ->formatStateUsing(function ($state) {
+                                //                             static $categories;
+                                //                             if (! isset($categories)) {
+                                //                                 $categories = ProgramCategory::pluck('name', 'id');
+                                //                             }
+
+                                //                             return '( '.($categories[$state] ?? '').' )';
+                                //                         }),
+                                //                     TextEntry::make('contract_budget')
+                                //                         ->grow(false)
+                                //                         ->aboveContent('Nilai Kontrak Program')
+                                //                         ->belowContent(function ($state, Get $get) {
+                                //                             // Get the current item's data
+                                //                             // dd($state, $get('planned_budget'));
+                                //                             if ($state === 0.0 || (float) $get('planned_budget') === 0.0 || $get('planned_budget') === null) {
+                                //                                 return 'Margin 0%';
+                                //                             }
+
+                                //                             return Schema::end((string) 'Margin '.round(((((float) ($state) - (float) ($get('planned_budget'))) / (float) ($get('contract_budget'))) * 100), 2).'%');
+                                //                         })
+                                //                         ->hiddenLabel()
+                                //                         ->money(currency: 'IDR', locale: 'id')
+                                //                         ->alignEnd(),
+                                //                     TextEntry::make('planned_budget')
+                                //                         ->grow(false)
+                                //                         ->aboveContent('Nilai planned Program')
+                                //                         ->belowContent(function ($state, Get $get) {
+                                //                             // Get the current item's data
+                                //                             if ($state === 0.0 || (float) $get('contract_budget') === 0.0 || $get('contract_budget') === null) {
+                                //                                 return '0%';
+                                //                             }
+
+                                //                             return Schema::end((string) round((((float) ($state) / (float) ($get('contract_budget'))) * 100), 2).'%');
+                                //                         })
+                                //                         ->hiddenLabel()
+                                //                         ->money(currency: 'IDR', locale: 'id')
+                                //                         ->alignEnd(),
+                                //                 ])
+                                //                     ->from('md'),
+                                //                 // ViewField::make('program_activity_items_review')
+                                //                 //     ->label('Rincian Item')
+                                //                 //     ->view('filament.components.program-items-review-table')
+                                //                 //     ->viewData(fn(Get $get) => [
+                                //                 //         'items' => $get('program_activity_items_review') ?? [],
+                                //                 //     ]),
+                                //                 RepeatableEntry::make('program_activity_items_review')
+                                //                     ->label('Rincian Item')
+                                //                     ->table([
+                                //                         TableColumn::make('Deskripsi')->width('500px'),
+                                //                         TableColumn::make('Aktivitas')->width('250px'),
+                                //                         TableColumn::make('Qty')->width('150px'),
+                                //                         TableColumn::make('Unit Qty'),
+                                //                         TableColumn::make('Frekuensi'),
+                                //                         TableColumn::make('Nilai Kontrak Item')->width('250px'),
+                                //                         TableColumn::make('Nilai Planned Item')->width('250px'),
+                                //                     ])
+                                //                     ->schema([
+                                //                         TextEntry::make('description'),
+                                //                         TextEntry::make('program_activity_name'),
+                                //                         TextEntry::make('quantity'),
+                                //                         TextEntry::make('unit'),
+                                //                         TextEntry::make('frequency'),
+                                //                         TextEntry::make('total_item_budget')
+                                //                             ->money(currency: 'IDR', locale: 'id'),
+                                //                         TextEntry::make('total_item_planned_budget')
+                                //                             ->money(currency: 'IDR', locale: 'id'),
+                                //                     ])
+                                //                     ->contained(false),
+                                //             ]),
+                                //     ]),
                             ])
                             ->action(function (array $data) {
                                 try {
