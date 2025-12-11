@@ -20,8 +20,6 @@ class Coa extends Model
         'type',
         'partnership_contract_id',
         'program_id',
-        'budget_amount',
-        'planned_budget',
         'contract_year',
         'is_active',
     ];
@@ -29,8 +27,6 @@ class Coa extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'type' => COAType::class,
-        'budget_amount' => 'decimal:2',
-        'planned_budget' => 'decimal:2',
         'contract_year' => 'integer',
     ];
 
@@ -147,5 +143,25 @@ class Coa extends Model
         }
 
         return $this->name;
+    }
+
+    // Attributes
+
+    protected function plannedBudget(): Attribute
+    {
+        return new Attribute(
+            get: function () {
+                return $this->programActivityItems()->get()->sum('total_item_planned_budget');
+            }
+        );
+    }
+
+    protected function actualSpent(): Attribute
+    {
+        return new Attribute(
+            get: function () {
+                return $this->requestItems()->paid()->get()->sum('total_act_amount');
+            }
+        );
     }
 }

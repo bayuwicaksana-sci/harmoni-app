@@ -37,10 +37,9 @@ class DailyPaymentRequestCreateForm2
                 ->compact()
                 // ->live(onBlur: 500)
                 ->columnSpanFull()
-                ->addActionAlignment(Alignment::Start)
                 ->extraAttributes([
-                    'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
-                ])
+                    'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:[&_thead]:[&_th]:last:w-[46px]',
+                ], merge: true)
                 ->mutateDehydratedStateUsing(function ($state) {
                     if (is_array($state)) {
                         // Filter out completely empty rows
@@ -76,7 +75,7 @@ class DailyPaymentRequestCreateForm2
                 ->schema([
                     Select::make('coa_id')
                         ->label('COA')
-                        ->options(Coa::query()->pluck('name', 'id'))
+                        ->options(Coa::query()->active()->pluck('name', 'id'))
                         ->native(true)
                         ->live()
                         ->requiredWith('item,qty,unit_qty,base_price')

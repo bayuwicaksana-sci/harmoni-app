@@ -1,5 +1,8 @@
 <?php
 
+namespace App\Filament\Resources\Settlements\Schemas\Components;
+
+use App\Enums\DPRStatus;
 use App\Enums\RequestItemStatus;
 use App\Enums\RequestPaymentType;
 use App\Models\Coa;
@@ -62,7 +65,7 @@ class EditSettlementForm
                         $requestItems = $retrievedSettlementReceipt->requestItems;
 
                         foreach ($requestItems as $index => $item) {
-                            if (! $item->is_unplanned) {
+                            if (! $item->is_unplanned && $item->payment_type !== RequestPaymentType::Offset) {
                                 $item->clearMediaCollection('request_item_image');
                                 $item->update([
                                     'act_quantity' => null,
@@ -70,6 +73,10 @@ class EditSettlementForm
                                     'status' => RequestItemStatus::WaitingSettlement,
                                     'settlement_receipt_id' => null,
                                     'settlement_id' => null,
+                                ]);
+                            } elseif (($item->is_unplanned && $item->daily_payment_request_id !== null) || ($item->payment_type === RequestPaymentType::Offset)) {
+                                $item->update([
+                                    'settlement_receipt_id' => null,
                                 ]);
                             } else {
                                 $item->forceDelete();
@@ -122,7 +129,7 @@ class EditSettlementForm
                             if (in_array($itemId, $existingItemIds)) {
                                 Log::info("\n\nItem ID to Handle = ".(string) $itemId);
                                 $retrievedRequestItem = RequestItem::find($itemId);
-                                if (! $retrievedRequestItem->is_unplanned) {
+                                if (! $retrievedRequestItem->is_unplanned && $retrievedRequestItem->payment_type !== RequestPaymentType::Offset) {
                                     $retrievedRequestItem->act_quantity = null;
                                     $retrievedRequestItem->act_amount_per_item = null;
                                     $retrievedRequestItem->status = RequestItemStatus::WaitingSettlement;
@@ -131,6 +138,10 @@ class EditSettlementForm
                                     $retrievedRequestItem->save();
 
                                     $retrievedRequestItem->clearMediaCollection('request_item_image');
+                                } elseif (($retrievedRequestItem->is_unplanned && $retrievedRequestItem->daily_payment_request_id !== null) || ($retrievedRequestItem->payment_type === RequestPaymentType::Offset)) {
+                                    $retrievedRequestItem->update([
+                                        'settlement_receipt_id' => null,
+                                    ]);
                                 } else {
                                     $retrievedRequestItem->forceDelete();
                                 }
@@ -173,8 +184,8 @@ class EditSettlementForm
                                 Log::info("\n\nUpdated Item of Existing Receipt ID = ".(string) $originalReceipt->id.' => '.(string) $originalItem->id);
                             } else {
 
-                                $itemData['program_activity_id'] = $itemData['program_activity_id'] ?? null;
-                                $itemData['program_activity_item_id'] = isset($itemData['program_activity_id']) || $itemData['program_activity_id'] !== '' || $itemData['program_activity_id'] !== null ? ProgramActivityItem::whereProgramActivityId($itemData['program_activity_id'])
+                                $itemData['program_activity_id'] = (isset($itemData['program_activity_id']) && $itemData['program_activity_id']) ? (int) $itemData['program_activity_id'] : null;
+                                $itemData['program_activity_item_id'] = (isset($itemData['program_activity_id']) && $itemData['program_activity_id']) ? ProgramActivityItem::whereProgramActivityId($itemData['program_activity_id'])
                                     ->whereDescription($itemData['description'])
                                     ->value('id')
                                     : null;
@@ -250,8 +261,8 @@ class EditSettlementForm
                                 Log::info("\n\nUpdated Item of New Receipt ID = ".(string) $createdReceipt->id.' => '.(string) $originalItem2->id);
 
                             } else {
-                                $itemData2['program_activity_id'] = (int) $itemData2['program_activity_id'] ?? null;
-                                $itemData2['program_activity_item_id'] = isset($itemData2['program_activity_id']) || $itemData2['program_activity_id'] !== '' || $itemData2['program_activity_id'] !== null ? ProgramActivityItem::whereProgramActivityId((int) $itemData2['program_activity_id'])
+                                $itemData2['program_activity_id'] = isset($itemData2['program_activity_id']) && $itemData2['program_activity_id'] ? (int) $itemData2['program_activity_id'] : null;
+                                $itemData2['program_activity_item_id'] = isset($itemData2['program_activity_id']) && $itemData2['program_activity_id'] ? ProgramActivityItem::whereProgramActivityId((int) $itemData2['program_activity_id'])
                                     ->whereDescription($itemData2['description'])
                                     ->value('id')
                                     : null;
@@ -316,98 +327,6 @@ class EditSettlementForm
                     ->addActionAlignment(Alignment::Start)
                     ->columnSpanFull()
                     ->saveRelationshipsUsing(function () {})
-                    // ->saveRelationshipsUsing(function (Repeater $component, Model $record, $state, $rawState) {
-
-                    //     $relationship = $component->getRelationship();
-                    //     // Get the IDs from the current state
-                    //     $currentIds = collect($state)
-                    //         ->pluck('id')
-                    //         ->filter()
-                    //         ->map(fn ($value) => $value === 'new' ? $value : (int) $value)
-                    //         ->toArray();
-
-                    //     // Get existing IDs
-                    //     $existingIds = $relationship->pluck($relationship->getRelated()->getKeyName())->toArray();
-
-                    //     // Determine which records to detach (instead of delete)
-                    //     $idsToHandle = array_diff($existingIds, $currentIds);
-
-                    //     // dd($currentIds, $existingIds, $idsToHandle);
-                    //     foreach ($idsToHandle as $index => $id) {
-                    //         if (in_array($id, $existingIds)) {
-                    //             $retrievedRequestItem = RequestItem::find($id);
-                    //             if (! $retrievedRequestItem->is_unplanned) {
-                    //                 $retrievedRequestItem->act_quantity = null;
-                    //                 $retrievedRequestItem->act_amount_per_item = null;
-                    //                 $retrievedRequestItem->status = RequestItemStatus::WaitingSettlement;
-                    //                 $retrievedRequestItem->settlement_id = null;
-                    //                 $retrievedRequestItem->settlement_receipt_id = null;
-                    //                 $retrievedRequestItem->save();
-
-                    //                 $retrievedRequestItem->clearMediaCollection('request_item_image');
-                    //             } else {
-                    //                 $retrievedRequestItem->forceDelete();
-                    //             }
-                    //         }
-                    //     }
-                    //     // Handle creates and updates
-                    //     foreach ($state as $itemData) {
-                    //         if (isset($itemData['id']) && $itemData['id'] !== 'new') {
-                    //             $originalItem = RequestItem::find((int) $itemData['id']);
-
-                    //             // $existingMedia = $originalItem->getMedia('request_item_image')->pluck('uuid', 'uuid')->toArray();
-
-                    //             // dd($existingMedia, $itemData['item_image'], array_diff($existingMedia, $itemData['item_image']));
-
-                    //             if (! $originalItem->settlement_id) {
-                    //                 // dd($itemData['item_image']);
-                    //                 foreach ($itemData['item_image'] ?? [] as $index => $file) {
-                    //                     $originalItem->copyMedia($file)->toMediaCollection('request_item_image', 'local');
-
-                    //                     // @unlink($file->getPathname());
-                    //                 }
-                    //             }
-
-                    //             $originalItem->settlement_id = $record->settlement_id;
-                    //             $originalItem->settlement_receipt_id = $record->id;
-                    //             $originalItem->act_quantity = (float) str_replace(['.', ','], ['', '.'], $itemData['act_quantity']);
-                    //             $originalItem->act_amount_per_item = (float) str_replace(['.', ','], ['', '.'], $itemData['act_amount_per_item']);
-                    //             $originalItem->status = (float) str_replace(['.', ','], ['', '.'], $itemData['act_quantity']) <= 0.00 || (float) str_replace(['.', ','], ['', '.'], $itemData['act_amount_per_item']) <= 0.00 ? RequestItemStatus::Cancelled : $originalItem->status;
-
-                    //             $originalItem->save();
-
-                    //         } else {
-                    //             $itemData['program_activity_id'] = $itemData['program_activity_id'] ?? null;
-                    //             $itemData['program_activity_item_id'] = isset($itemData['program_activity_id']) || $itemData['program_activity_id'] !== '' || $itemData['program_activity_id'] !== null ? ProgramActivityItem::whereProgramActivityId((int) $itemData['program_activity_id'])
-                    //                 ->whereDescription($itemData['description'])
-                    //                 ->value('id')
-                    //                 : null;
-                    //             $itemData['quantity'] = (float) str_replace(['.', ','], ['', '.'], $itemData['quantity']);
-                    //             $itemData['amount_per_item'] = (float) str_replace(['.', ','], ['', '.'], $itemData['amount_per_item']);
-                    //             $itemData['act_quantity'] = (float) str_replace(['.', ','], ['', '.'], $itemData['act_quantity']);
-                    //             $itemData['act_amount_per_item'] = (float) str_replace(['.', ','], ['', '.'], $itemData['act_amount_per_item']);
-                    //             $itemData['self_account'] = true;
-                    //             $itemData['bank_name'] = Auth::user()->employee->bank_name;
-                    //             $itemData['bank_account'] = Auth::user()->employee->bank_account_number;
-                    //             $itemData['account_owner'] = Auth::user()->employee->bank_cust_name;
-                    //             $itemData['is_unplanned'] = true;
-                    //             $itemData['payment_type'] = RequestPaymentType::Reimburse;
-                    //             $itemData['status'] = RequestItemStatus::Draft;
-                    //             $itemData['settlement_id'] = $record->settlement_id;
-
-                    //             $itemImage = $itemData['item_image'];
-
-                    //             unset($itemData['item_image']);
-
-                    //             $createdItem = $relationship->create($itemData);
-
-                    //             foreach ($itemImage ?? [] as $index => $file) {
-                    //                 $createdItem->copyMedia($file)->toMediaCollection('request_item_image', 'local');
-                    //             }
-
-                    //         }
-                    //     }
-                    // })
                     ->extraAttributes([
                         'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
                     ])
@@ -442,7 +361,7 @@ class EditSettlementForm
                     // ->partiallyRenderComponentsAfterStateUpdated(['request_quantity', 'request_unit_quantity', 'request_amount_per_item'])
                             ->options(function ($record) {
                                 $options = RequestItem::query()
-                                    ->whereHas('dailyPaymentRequest', fn (Builder $query) => $query->where('requester_id', Auth::user()->employee->id))
+                                    ->whereHas('dailyPaymentRequest', fn (Builder $query) => $query->where('requester_id', Auth::user()->employee->id)->where('status', '!=', DPRStatus::Rejected))
                                     ->where('request_items.status', '=', RequestItemStatus::WaitingSettlement->value)
                                     ->orWhere('request_items.status', '=', RequestItemStatus::WaitingSettlementReview->value)
                                     ->orWhere('request_items.status', '=', RequestItemStatus::Cancelled->value)
@@ -656,7 +575,7 @@ class EditSettlementForm
                             ->label('COA')
                             ->disabled(fn (Get $get) => $get('id') !== 'new')
                             ->dehydrated(fn (Get $get) => $get('id') === 'new')
-                            ->options(Coa::query()->pluck('name', 'id'))
+                            ->options(Coa::query()->active()->pluck('name', 'id'))
                             ->native(true)
                             ->live(),
                         // ->afterStateUpdatedJs(

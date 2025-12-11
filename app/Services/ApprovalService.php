@@ -179,7 +179,11 @@ class ApprovalService
         // Update request status to rejected
         $request = $approval->dailyPaymentRequest;
         $request->update(['status' => DPRStatus::Rejected]);
-        $request->requestItems()->update(['status' => RequestItemStatus::Rejected]);
+
+        $request->requestItems()->update(['status' => RequestItemStatus::Rejected, 'settlement_receipt_id' => null]);
+
+        $request->approvalHistories()->where('action', ApprovalAction::Pending)->update(['action' => ApprovalAction::Cancelled]);
+        $request->refresh();
 
         // TODO: Notify requester
         $notificationService = app(DPRNotificationService::class);

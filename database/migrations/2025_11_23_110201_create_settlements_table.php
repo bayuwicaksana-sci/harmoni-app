@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('settlement_number')->nullable()->unique();
             $table->foreignId('submitter_id')->nullable()->constrained('employees', 'id')->nullOnDelete();
-            $table->decimal('refund_amount', 15, 2);
+            $table->decimal('refund_amount', 15, 2)->nullable();
             $table->dateTime('submit_date')->nullable();
             $table->string('status')->default('draft');
             $table->timestamps();

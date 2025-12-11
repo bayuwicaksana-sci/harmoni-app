@@ -81,14 +81,60 @@ class Settlement extends Model implements HasMedia
         return $this->hasMany(SettlementReceipt::class);
     }
 
+    /**
+     * Get settlement items excluding those from rejected DPRs
+     * Use this for all financial calculations to ensure rejected data doesn't affect active calculations
+     */
+    public function activeSettlementItems()
+    {
+        return $this->settlementItems()
+            ->whereNotIn('status', [
+                RequestItemStatus::Rejected,
+            ])
+            ->where(function ($query) {
+                $query->whereNull('daily_payment_request_id')
+                    ->orWhereHas('dailyPaymentRequest', function ($q) {
+                        $q->where('status', '!=', \App\Enums\DPRStatus::Rejected);
+                    });
+            });
+    }
+
     public function submitter(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'submitter_id');
     }
 
-    public function generatedPaymentRequest(): BelongsTo
+    public function generatedPaymentRequests(): HasMany
     {
-        return $this->belongsTo(DailyPaymentRequest::class, 'generated_payment_request_id');
+        return $this->hasMany(DailyPaymentRequest::class, 'settlement_id');
+    }
+
+    public function latestGeneratedDPR(): ?DailyPaymentRequest
+    {
+        return $this->generatedPaymentRequests()
+            ->latest('created_at')
+            ->first();
+    }
+
+    public function hasApprovedDPR(): bool
+    {
+        return $this->generatedPaymentRequests()
+            ->where('status', \App\Enums\DPRStatus::Approved)
+            ->exists();
+    }
+
+    public function hasPendingDPR(): bool
+    {
+        return $this->generatedPaymentRequests()
+            ->where('status', \App\Enums\DPRStatus::Pending)
+            ->exists();
+    }
+
+    public function hasRejectedDPROnly(): bool
+    {
+        return $this->generatedPaymentRequests()->exists()
+            && ! $this->hasPendingDPR()
+            && ! $this->hasApprovedDPR();
     }
 
     public function refundConfirmer(): BelongsTo
@@ -134,14 +180,16 @@ class Settlement extends Model implements HasMedia
     protected function approvedBudget(): Attribute
     {
         return new Attribute(
-            get: fn () => $this->settlementItems->where('status', '!=', RequestItemStatus::Cancelled)->where('is_unplanned', '!=', true)->sum('total_amount')
+            get: fn () => $this->activeSettlementItems()->get()
+                ->where('is_unplanned', '!=', true)
+                ->sum('total_amount')
         );
     }
 
     protected function spentBudget(): Attribute
     {
         return new Attribute(
-            get: fn () => $this->settlementItems
+            get: fn () => $this->activeSettlementItems()->get()
                 ->where('payment_type', '!=', RequestPaymentType::Offset)
                 ->sum('total_act_amount')
         );
@@ -157,7 +205,7 @@ class Settlement extends Model implements HasMedia
     protected function cancelledBudget(): Attribute
     {
         return new Attribute(
-            get: fn () => $this->settlementItems
+            get: fn () => $this->activeSettlementItems()->get()
                 ->where('status', RequestItemStatus::Cancelled)
                 ->sum('total_amount')
         );
@@ -166,7 +214,7 @@ class Settlement extends Model implements HasMedia
     protected function newRequestBudget(): Attribute
     {
         return new Attribute(
-            get: fn () => $this->settlementItems
+            get: fn () => $this->activeSettlementItems()->get()
                 ->where('is_unplanned', true)
                 ->sum('total_act_amount')
         );
@@ -177,15 +225,15 @@ class Settlement extends Model implements HasMedia
      */
     public function getReconciliation(): array
     {
-        // Load all items with relationships
-        $allItems = $this->settlementItems()
+        // Load all ACTIVE items (excluding items from rejected DPRs)
+        $allItems = $this->activeSettlementItems()
             ->with(['coa', 'settleParent', 'settleChilds'])
             ->get();
 
         // Separate items by type
         $originalItems = $allItems->filter(fn ($item) => $item->settling_for === null && ! $item->is_unplanned);
 
-        $newItems = $allItems->filter(fn ($item) => $item->is_unplanned);
+        $newItems = $allItems->filter(fn ($item) => $item->is_unplanned && ! in_array($item->status, [RequestItemStatus::Draft, RequestItemStatus::Rejected]));
 
         $offsetItems = $allItems->filter(function ($item) {
             return $item->payment_type !== null && $item->payment_type === RequestPaymentType::Offset;
@@ -457,8 +505,8 @@ class Settlement extends Model implements HasMedia
                 'confirmed_at' => now(),
             ]);
 
-            // Mark all settlement items as Closed
-            $this->settlementItems()
+            // Mark ACTIVE settlement items as Closed (excluding items from rejected DPRs)
+            $this->activeSettlementItems()
                 ->whereIn('status', [
                     RequestItemStatus::WaitingRefund,
                     RequestItemStatus::WaitingApproval,
@@ -478,8 +526,8 @@ class Settlement extends Model implements HasMedia
                 'confirmed_at' => now(),
             ]);
 
-            // Mark all settlement items as Closed
-            $this->settlementItems()
+            // Mark ACTIVE settlement items as Closed (excluding items from rejected DPRs)
+            $this->activeSettlementItems()
                 ->whereIn('status', [
                     RequestItemStatus::WaitingRefund,
                     RequestItemStatus::WaitingApproval,
@@ -623,8 +671,8 @@ class Settlement extends Model implements HasMedia
         $itemProcessor = app(SettlementItemProcessingService::class);
         $offsetService = app(SettlementOffsetCalculationService::class);
 
-        // Load all settlement items
-        $items = $this->settlementItems()->get();
+        // Load ACTIVE settlement items only (excluding items from rejected DPRs)
+        $items = $this->activeSettlementItems()->get();
 
         // Process items into results format
         $results = $items->map(function ($item) {

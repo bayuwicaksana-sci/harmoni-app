@@ -38,13 +38,14 @@ class CoaForm
                             ->trim()
                             ->columnSpan([
                                 'default' => 6,
-                                'lg' => 2
+                                'lg' => 2,
                             ]),
 
                         Select::make('type')
                             ->label('Tipe COA')
                             ->required()
                             ->options(COAType::class)
+                            ->selectablePlaceholder(false)
                             ->default(COAType::Program)
                             ->live()
                             ->partiallyRenderComponentsAfterStateUpdated(['program_id', 'partnership_contract_id', 'contract_year'])
@@ -56,7 +57,7 @@ class CoaForm
                                 }
                             })->columnSpan([
                                 'default' => 6,
-                                'lg' => 2
+                                'lg' => 2,
                             ]),
 
                         Select::make('program_id')
@@ -66,11 +67,11 @@ class CoaForm
                             ->preload()
                             ->live()
                             ->partiallyRenderComponentsAfterStateUpdated(['partnership_contract_id'])
-                            ->required(fn(Get $get) => $get('type') === COAType::Program)
-                            ->hidden(fn(Get $get) => $get('type') === COAType::NonProgram)
+                            ->required(fn (Get $get) => $get('type') === COAType::Program)
+                            ->hidden(fn (Get $get) => $get('type') === COAType::NonProgram)
                             ->helperText('Required if type is Program')->columnSpan([
                                 'default' => 6,
-                                'lg' => 2
+                                'lg' => 2,
                             ]),
 
                         Select::make('partnership_contract_id')
@@ -93,43 +94,29 @@ class CoaForm
                                     ->pluck('contract_number', 'id');
                             })
                             ->searchable()
-                            ->required(fn(Get $get) => $get('type') === COAType::Program)
-                            ->hidden(fn(Get $get) => $get('type') === COAType::NonProgram)
+                            ->required(fn (Get $get) => $get('type') === COAType::Program)
+                            ->hidden(fn (Get $get) => $get('type') === COAType::NonProgram)
                             ->live(onBlur: true)
                             ->partiallyRenderComponentsAfterStateUpdated(['contract_year'])
-                            ->afterStateUpdated(fn($state, Set $set) => $state === null ? $set('contract_year', null) :  $set('contract_year', PartnershipContract::find((int)$state)->contract_year))
+                            ->afterStateUpdated(fn ($state, Set $set) => $state === null ? $set('contract_year', null) : $set('contract_year', PartnershipContract::find((int) $state)->contract_year))
                             ->helperText('Required if type is Program')
                             ->columnSpan([
                                 'default' => 6,
-                                'lg' => 2
+                                'lg' => 2,
                             ]),
 
                         TextInput::make('contract_year')
-                            ->disabled(fn(Get $get) => $get('type') === COAType::Program)
-                            ->hidden(fn(Get $get) => $get('type') === COAType::NonProgram)
-                            ->dehydrated(fn(Get $get) => $get('type') === COAType::Program)
-                            ->required(fn(Get $get) => $get('type') === COAType::Program)
+                            ->disabled(fn (Get $get) => $get('type') === COAType::Program)
+                            ->hidden(fn (Get $get) => $get('type') === COAType::NonProgram)
+                            ->dehydrated(fn (Get $get) => $get('type') === COAType::Program)
+                            ->required(fn (Get $get) => $get('type') === COAType::Program)
                             ->label('Tahun Kontrak')
                             ->numeric()
                             ->minValue(2020)
                             ->maxValue(2050)
                             ->columnSpan([
                                 'default' => 6,
-                                'lg' => 2
-                            ]),
-
-                        TextInput::make('budget_amount')
-                            ->label('Budget')
-                            ->numeric()
-                            ->minValue(1)
-                            ->prefix('Rp')
-                            ->required()
-                            ->live(debounce: 1000)
-                            ->partiallyRenderAfterStateUpdated(true)
-                            ->belowContent(fn($state) => 'Rp ' . number_format($state, 2, ',', '.'))
-                            ->columnSpan([
-                                'default' => 6,
-                                'lg' => 2
+                                'lg' => 2,
                             ]),
 
                         Toggle::make('is_active')

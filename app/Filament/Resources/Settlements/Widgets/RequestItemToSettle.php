@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Settlements\Widgets;
 
 use App\Enums\RequestItemStatus;
+use App\Enums\RequestPaymentType;
+use App\Filament\Resources\DailyPaymentRequests\DailyPaymentRequestResource;
 use App\Models\RequestItem;
 use Filament\Actions\BulkActionGroup;
 use Filament\Tables\Columns\IconColumn;
@@ -10,27 +12,49 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class RequestItemToSettle extends TableWidget
 {
-    public function getColumns(): int|array|null
-    {
-        return 1;
-    }
+    protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
         return $table
-            ->query(fn (): Builder => RequestItem::query()->where('status', RequestItemStatus::WaitingSettlement))
+            ->query(function (): Builder {
+                if (Auth::user()->employee->jobTitle->code === 'CEO' || Auth::user()->employee->jobTitle->department->code === 'FIN') {
+                    return RequestItem::query()->where('status', RequestItemStatus::WaitingSettlement);
+                } else {
+                    return RequestItem::where('status', RequestItemStatus::WaitingSettlement)->whereHas('dailyPaymentRequest', function (Builder $query) {
+                        $query->where('requester_id', Auth::user()->employee->id);
+                    });
+                }
+            })
+            ->heading('Request Item menunggu Settlement')
+            ->searchable(false)
             ->columns([
-                TextColumn::make('dailyPaymentRequest.id')
-                    ->searchable(),
-                TextColumn::make('coa.name')
-                    ->searchable(),
-                TextColumn::make('programActivity.name')
-                    ->searchable(),
-                TextColumn::make('programActivityItem.id')
-                    ->searchable(),
+                TextColumn::make('dailyPaymentRequest.request_number')
+                    ->label('Request ID')
+                    ->badge()
+                    ->url(fn ($record) => DailyPaymentRequestResource::getUrl('view', ['record' => $record->dailyPaymentRequest->id])),
+                TextColumn::make('dailyPaymentRequest.requester.user.name')
+                    ->label('Requester'),
+                TextColumn::make('description')
+                    ->label('Deskripsi Item'),
+                TextColumn::make('request_quantity')
+                    ->label('Qty')
+                    ->getStateUsing(fn ($record) => ($record->payment_type === RequestPaymentType::Reimburse ? (string) number_format($record->act_quantity, 0, ',', '.') : (string) number_format($record->quantity, 0, ',', '.')).' '.$record->unit_quantity),
+                TextColumn::make('request_amount_per_item')
+                    ->label('Harga/item')
+                    ->getStateUsing(fn ($record) => $record->payment_type === RequestPaymentType::Reimburse ? $record->act_amount_per_item : $record->amount_per_item)
+                    ->money(currency: 'IDR', locale: 'id'),
+                TextColumn::make('request_total_amount')
+                    ->label('Total Nominal Request')
+                    ->getStateUsing(fn ($record) => $record->total_amount)
+                    ->money(currency: 'IDR', locale: 'id'),
+                TextColumn::make('due_date')
+                    ->label('Tenggat Waktu Realisasi')
+                    ->date('d M Y', 'Asia/Jakarta'),
                 // TextColumn::make('payment_type')
                 //     ->badge()
                 //     ->searchable(),

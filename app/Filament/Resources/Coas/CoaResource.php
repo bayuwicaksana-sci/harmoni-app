@@ -6,6 +6,7 @@ use App\Filament\Resources\Coas\Pages\CreateCoa;
 use App\Filament\Resources\Coas\Pages\EditCoa;
 use App\Filament\Resources\Coas\Pages\ListCoas;
 use App\Filament\Resources\Coas\Pages\ViewCoa;
+use App\Filament\Resources\Coas\RelationManagers\RequestItemsRelationManager;
 use App\Filament\Resources\Coas\Schemas\CoaForm;
 use App\Filament\Resources\Coas\Schemas\CoaInfolist;
 use App\Filament\Resources\Coas\Tables\CoasTable;
@@ -50,7 +51,7 @@ class CoaResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RequestItemsRelationManager::class,
         ];
     }
 
@@ -58,9 +59,9 @@ class CoaResource extends Resource
     {
         return [
             'index' => ListCoas::route('/'),
-            'create' => CreateCoa::route('/create'),
-            'view' => ViewCoa::route('/{record}'),
-            'edit' => EditCoa::route('/{record}/edit'),
+            // 'create' => CreateCoa::route('/create'),
+            // 'view' => ViewCoa::route('/{record}'),
+            // 'edit' => EditCoa::route('/{record}/edit'),
         ];
     }
 

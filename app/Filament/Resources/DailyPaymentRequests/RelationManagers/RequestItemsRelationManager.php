@@ -53,7 +53,7 @@ class RequestItemsRelationManager extends RelationManager
                     ->schema([
                         Select::make('coa_id')
                             ->label('COA')
-                            ->options(Coa::query()->pluck('name', 'id'))
+                            ->options(Coa::query()->active()->pluck('name', 'id'))
                             ->native(false)
                             ->live()
                             ->afterStateUpdatedJs(

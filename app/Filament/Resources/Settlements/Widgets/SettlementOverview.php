@@ -3,81 +3,156 @@
 namespace App\Filament\Resources\Settlements\Widgets;
 
 use App\Enums\RequestPaymentType;
+use App\Models\Employee;
 use App\Models\RequestItem;
-use App\Models\Settlement;
-use Filament\Widgets\StatsOverviewWidget;
-use Filament\Widgets\StatsOverviewWidget\Stat;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\RepeatableEntry\TableColumn;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Text;
+use Filament\Schemas\Components\View;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Schemas\Schema;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
+use Filament\Widgets\Widget;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 
-class SettlementOverview extends StatsOverviewWidget
+class SettlementOverview extends Widget implements HasActions, HasSchemas, HasTable
 {
-    protected function getStats(): array
+    use InteractsWithActions;
+    use InteractsWithSchemas;
+    use InteractsWithTable;
+
+    protected int|string|array $columnSpan = 'full';
+
+    protected string $view = 'volt-livewire::filament.resources.settlements.widgets.settlement-overview';
+
+    public function tabComponent(Schema $schema): Schema
     {
-        return [
-            Stat::make('Request vs Settlement Overview', function () {
-                // $totalRequested = RequestItem::disbursed()->get()->sum('total_amount');
-                $totalRequested = RequestItem::disbursed()->get()->sum('total_amount') + RequestItem::disbursed()->where('payment_type', RequestPaymentType::Reimburse)->get()->sum('total_act_amount');
-                $totalSettled = RequestItem::disbursed()->get()->sum('total_act_amount');
-                $variance = $totalRequested - $totalSettled;
+        return $schema
+            ->components([
+                Tabs::make('Settlement overview')
+                    ->tabs([
+                        Tab::make('Settlement Overview')
+                            ->schema([
+                                View::make('livewire.filament.resources.settlements.widgets.settlement-overview-content')
+                                    ->viewData(function () {
+                                        $totalRequested = RequestItem::disbursed()->get()->sum('total_amount') + RequestItem::disbursed()->where('payment_type', RequestPaymentType::Reimburse)->get()->sum('total_act_amount');
+                                        $totalSettled = RequestItem::disbursed()->get()->sum('total_act_amount');
+                                        $variance = $totalRequested - $totalSettled;
 
-                $percentage = $totalRequested > 0 ? min(100, max(0, (abs($variance) / $totalRequested) * 100)) : 0;
-                $progressPercentage = $totalRequested > 0 ? min(100, max(0, ($totalSettled / $totalRequested) * 100)) : 0;
-                $isNegative = $variance < 0;
+                                        $percentage = $totalRequested > 0 ? min(100, max(0, (abs($variance) / $totalRequested) * 100)) : 0;
+                                        $progressPercentage = $totalRequested > 0 ? min(100, max(0, ($totalSettled / $totalRequested) * 100)) : 0;
+                                        $isNegative = $variance < 0;
 
-                // Determine color based on variance
-                $colorClass = $isNegative ? 'bg-red-500' : 'bg-green-500';
-                $textColorClass = $isNegative ? 'text-red-600' : 'text-green-600';
+                                        // Determine color based on variance
+                                        $colorClass = $isNegative ? 'bg-red-500' : 'bg-green-500';
+                                        $textColorClass = $isNegative ? 'text-red-600' : 'text-green-600';
 
-                return new HtmlString('<div class="flex flex-col gap-3 w-full">
-                    <div class="grid grid-cols-2 gap-2 text-sm">
-                        <div class="flex flex-col">
-                            <span class="text-gray-500 text-xs">Total Requested</span>
-                            <span class="font-semibold">Rp '.number_format($totalRequested, 2, ',', '.').'</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-gray-500 text-xs">Total Settled</span>
-                            <span class="font-semibold">Rp '.number_format($totalSettled, 2, ',', '.').'</span>
-                        </div>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                        <div class="'.$colorClass.' h-3 rounded-full transition-all duration-300" style="width: '.$progressPercentage.'%"></div>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <div class="text-xs text-gray-500">'.($isNegative ? 'Over Budget' : 'Under Budget').'</div>
-                        <div class="'.$textColorClass.' font-semibold text-sm">'.($isNegative ? '-' : '+').round($percentage, 2).' %</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="'.$textColorClass.' font-semibold">Rp '.number_format(abs($variance), 2, ',', '.').'</div>
-                    </div>
-                </div>');
-            }),
-            Stat::make('Jumlah Settlement', Settlement::count())
-                ->extraAttributes([
-                    'class' => 'h-fit',
-                ]),
-            Stat::make('Nilai Pajak', function () {
-                $totalPPh21 = RequestItem::where('tax_id', 1)->get()->sum('tax_amount');
-                $totalPPh23 = RequestItem::where('tax_id', 2)->get()->sum('tax_amount');
+                                        return [
+                                            'totalRequested' => $totalRequested,
+                                            'totalSettled' => $totalSettled,
+                                            'variance' => $variance,
+                                            'percentage' => $percentage,
+                                            'progressPercentage' => $progressPercentage,
+                                            'colorClass' => $colorClass,
+                                            'textColorClass' => $textColorClass,
+                                            'isNegative' => $isNegative,
+                                        ];
+                                    }),
+                            ]),
+                        Tab::make('Health Index Score')
+                            ->extraAttributes([
+                                'class' => 'px-1',
+                            ])
+                            ->schema([
+                                Tabs::make('health-index-score')
+                                    ->contained(false)
+                                    ->tabs([
+                                        Tab::make('Score saya')
+                                            ->schema([
+                                                Text::make(Auth::user()->employee->settlementHealthIndexScore),
+                                            ]),
+                                        Tab::make('Score Team')
+                                            ->schema([
+                                                RepeatableEntry::make('team-health-index-score')
+                                                    ->hiddenLabel()
+                                                    ->state(fn () => Employee::query()->with('user')->get())
+                                                    ->table([
+                                                        TableColumn::make('Nama'),
+                                                        TableColumn::make('Total Request Item'),
+                                                        TableColumn::make('Total Settled'),
+                                                        TableColumn::make('Total On-Time'),
+                                                        TableColumn::make('Score'),
+                                                    ])
+                                                    ->schema([
+                                                        TextEntry::make('user.name')
+                                                            ->label('Nama'),
+                                                        TextEntry::make('disbursed_request_item_count')
+                                                            ->counts('disbursedRequestItem')
+                                                            ->label('Total Request Item')
+                                                            ->placeholder('N/A'),
+                                                        TextEntry::make('closed_request_count')
+                                                            ->counts('closedRequest')
+                                                            ->label('Total Settled')
+                                                            ->placeholder('N/A'),
+                                                        TextEntry::make('ontime_request_count')
+                                                            ->counts('ontimeRequest')
+                                                            ->label('Total On-Time')
+                                                            ->placeholder('N/A'),
+                                                        TextEntry::make('settlementHealthIndexScore')
+                                                            ->label('Score')
+                                                            ->placeholder('N/A')
+                                                            ->formatStateUsing(function ($state) {
+                                                                $percentage = (float) $state;
+                                                                $textColor = '';
 
-                return new HtmlString('<div class="flex flex-col gap-5">
-                    <div class="flex-col gap-1">
-                        <div class="text-base">PPh 21</div>
-                        <div>Rp '.number_format($totalPPh21, 2, ',', '.').'</div>
-                    </div>
-                    <div class="flex-col gap-1">
-                        <div class="text-base">PPh 23</div>
-                        <div>Rp '.number_format($totalPPh23, 2, ',', '.').'</div>
-                    </div>
-                </div>');
-            })
-                ->extraAttributes([
-                    'class' => 'h-fit',
-                ]),
-        ];
+                                                                if ($percentage >= 80) {
+                                                                    $textColor = 'text-green-700';
+                                                                } elseif ($percentage >= 50) {
+                                                                    $textColor = 'text-amber-600';
+                                                                } else {
+                                                                    $textColor = 'text-red-500';
+                                                                }
+
+                                                                return new HtmlString(
+                                                                    '<div class="flex items-baseline gap-0.5">
+                                                                    <span class="text-xl font-semibold '.$textColor.'">'.$state.'</span>
+                                                                    <span class="text-xs text-neutral-400">/100</span>
+                                                                </div>'
+                                                                );
+                                                            }),
+                                                    ]),
+                                            ])
+                                            ->visible(fn () => Auth::user()->employee->jobTitle->jobLevel->level === 5 || Auth::user()->employee->jobTitle->department->code === 'FIN'),
+                                    ]),
+                            ]),
+                    ]),
+            ]);
     }
 
-    public function getColumns(): int|array|null
-    {
-        return 3;
-    }
+    // public function table(Table $table): Table
+    // {
+    //     return $table
+    //         ->query(Product::query())
+    //         ->columns([
+    //             TextColumn::make('name'),
+    //         ])
+    //         ->filters([
+    //             // ...
+    //         ])
+    //         ->recordActions([
+    //             // ...
+    //         ])
+    //         ->toolbarActions([
+    //             // ...
+    //         ]);
+    // }
 }

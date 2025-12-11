@@ -35,3 +35,5 @@ CLAUDE.md
 nul
 reference/
 .z.ai.json
+.DS_Store
+/public/.DS_Store

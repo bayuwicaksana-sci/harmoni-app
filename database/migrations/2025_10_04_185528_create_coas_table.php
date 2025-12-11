@@ -19,8 +19,6 @@ return new class extends Migration
             $table->foreignId('partnership_contract_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('program_id')->nullable()->constrained('programs')->nullOnDelete();
             $table->year('contract_year')->nullable();
-            $table->decimal('budget_amount', 15, 2)->default(0);
-            $table->decimal('planned_budget', 15, 2)->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 

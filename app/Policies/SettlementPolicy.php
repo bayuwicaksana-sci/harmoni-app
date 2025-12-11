@@ -2,9 +2,13 @@
 
 namespace App\Policies;
 
+use App\Enums\RequestItemStatus;
 use App\Enums\SettlementStatus;
+use App\Models\RequestItem;
 use App\Models\Settlement;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Builder;
 
 class SettlementPolicy
 {
@@ -27,9 +31,11 @@ class SettlementPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user): bool
+    public function create(User $user): Response
     {
-        return true;
+        return RequestItem::where('status', RequestItemStatus::WaitingSettlement)->whereHas('dailyPaymentRequest', function (Builder $query) use ($user) {
+            $query->where('requester_id', $user->employee->id);
+        })->get()->first() ? Response::allow() : Response::deny('Kamu tidak memiliki Item yang menunggu settlement! Mantap!');
     }
 
     /**
@@ -37,7 +43,10 @@ class SettlementPolicy
      */
     public function update(User $user, Settlement $settlement): bool
     {
-        return ($settlement->status === SettlementStatus::Draft || $settlement->status === SettlementStatus::WaitingRefund) && $settlement->submitter_id === $user->employee->id && ! ($settlement->generatedPaymentRequest !== null);
+        return ($settlement->status === SettlementStatus::Draft || $settlement->status === SettlementStatus::WaitingRefund)
+            && $settlement->submitter_id === $user->employee->id
+            && ! $settlement->hasPendingDPR();     // Can edit if no pending DPR
+        // && ! $settlement->hasApprovedDPR();    // Can't edit if has approved DPR
     }
 
     /**
@@ -45,7 +54,10 @@ class SettlementPolicy
      */
     public function delete(User $user, Settlement $settlement): bool
     {
-        return ($settlement->status === SettlementStatus::Draft || $settlement->status === SettlementStatus::WaitingRefund) && $settlement->submitter_id === $user->employee->id && ! ($settlement->generatedPaymentRequest !== null);
+        return ($settlement->status === SettlementStatus::Draft || $settlement->status === SettlementStatus::WaitingRefund)
+            && $settlement->submitter_id === $user->employee->id
+            && ! $settlement->hasPendingDPR()
+            && ! $settlement->hasApprovedDPR();
     }
 
     /**

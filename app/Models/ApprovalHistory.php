@@ -16,12 +16,14 @@ class ApprovalHistory extends Model
         'action',
         'notes',
         'approved_at',
+        'rejected_at',
     ];
 
     protected $casts = [
         'sequence' => 'integer',
         'approved_at' => 'datetime',
-        'action' => ApprovalAction::class
+        'rejected_at' => 'datetime',
+        'action' => ApprovalAction::class,
     ];
 
     // Relationships
@@ -79,7 +81,7 @@ class ApprovalHistory extends Model
     {
         $this->action = ApprovalAction::Rejected;
         $this->notes = $notes;
-        $this->approved_at = now();
+        $this->rejected_at = now();
         $this->save();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Settlements\Schemas;
 
 use App\Enums\SettlementStatus;
 use App\Filament\Resources\DailyPaymentRequests\DailyPaymentRequestResource;
+use App\Models\Settlement;
 use Filament\Infolists\Components\KeyValueEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
@@ -13,10 +14,12 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\IconPosition;
 use Filament\Support\Enums\TextSize;
+use Filament\Support\Icons\Heroicon;
 use Njxqlus\Filament\Components\Infolists\LightboxSpatieMediaLibraryImageEntry;
 
 class SettlementInfolist
@@ -26,7 +29,7 @@ class SettlementInfolist
         return $schema
             ->components([
                 // Revision Alert (if exists) - PROMINENT!
-                Section::make('⚠️ Revision Diminta')
+                Section::make('Revision Diminta')
                     ->description('Finance Operator telah meminta revisi untuk settlement ini. Silakan periksa catatan revisi di bawah.')
                     ->icon('heroicon-o-exclamation-triangle')
                     ->iconColor('warning')
@@ -243,122 +246,130 @@ class SettlementInfolist
                                         return $reconciliation['reconciliations'] ?? [];
                                     })
                                     ->schema([
-                                        // COA Header with Name and Code
-                                        TextEntry::make('coa_name')
-                                            ->label('COA')
-                                            // ->state(fn (array $state): string => ($state['coa_name'] ?? 'N/A').' ('.($state['coa_code'] ?? 'N/A').')')
-                                            ->size(TextSize::Large)
-                                            ->weight(FontWeight::Bold)
-                                            ->color('primary')
-                                            ->icon('heroicon-o-tag')
-                                            ->iconPosition(IconPosition::Before),
-
-                                        // Financial Summary for this COA
-                                        KeyValueEntry::make('summary')
-                                            ->extraAttributes([
-                                                'class' => '**:font-sans!',
-                                            ])
-                                            ->label('Ringkasan Keuangan COA')
-                                            ->keyLabel('Kategori')
-                                            ->valueLabel('Nominal')
-                                            ->columnSpanFull(),
-
-                                        // Detailed Items Breakdown - TABLE FORMAT
-                                        RepeatableEntry::make('items')
-                                            ->label('Detail Item')
-                                            ->hiddenLabel()
-                                            ->contained(false)
-                                            ->extraAttributes([
-                                                'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
-                                            ])
-                                            ->table([
-                                                TableColumn::make('Type')->width('100px'),
-                                                TableColumn::make('Deskripsi')->width('300px'),
-                                                TableColumn::make('Qty Request')->width('110px'),
-                                                TableColumn::make('Qty Aktual')->width('110px'),
-                                                TableColumn::make('Unit')->width('125px'),
-                                                TableColumn::make('Harga Request')->width('250px'),
-                                                TableColumn::make('Harga Aktual')->width('250px'),
-                                                TableColumn::make('Total Request')->width('250px'),
-                                                TableColumn::make('Total Aktual')->width('250px'),
-                                                TableColumn::make('Selisih')->width('250px'),
-                                                TableColumn::make('Status')->width('200px'),
-                                            ])
+                                        Section::make(fn (Get $get) => $get('coa_name'))
+                                            ->icon(Heroicon::OutlinedTag)
+                                            ->compact()
+                                            ->collapsible()
+                                            ->collapsed()
                                             ->schema([
-                                                TextEntry::make('type')
-                                                    ->label('Type')
-                                                    ->badge()
-                                                    ->color(fn ($state) => match ($state) {
-                                                        'realized' => 'success',
-                                                        'cancelled' => 'gray',
-                                                        'new_unplanned' => 'warning',
-                                                        'offset' => 'info',
-                                                        default => 'primary',
-                                                    })
-                                                    ->formatStateUsing(fn ($state) => match ($state) {
-                                                        'realized' => 'Terealisasi',
-                                                        'cancelled' => 'Dibatalkan',
-                                                        'new_unplanned' => 'Item Baru',
-                                                        'offset' => 'Offset',
-                                                        default => ucfirst($state ?? 'unknown'),
-                                                    }),
-
-                                                TextEntry::make('description')
-                                                    ->label('Deskripsi')
-                                                    ->wrap()
-                                                    ->lineClamp(3),
-
-                                                TextEntry::make('request_quantity')
-                                                    ->label('Qty Request')
-                                                    ->placeholder('N/A')
-                                                    ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
-
-                                                TextEntry::make('actual_quantity')
-                                                    ->label('Qty Aktual')
-                                                    ->placeholder('N/A')
-                                                    ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
-
-                                                TextEntry::make('unit')
-                                                    ->label('Unit')
-                                                    ->placeholder('N/A'),
-
-                                                TextEntry::make('request_price')
-                                                    ->label('Harga Request')
-                                                    ->placeholder('N/A')
-                                                    ->money('IDR', locale: 'id'),
-
-                                                TextEntry::make('actual_price')
-                                                    ->label('Harga Aktual')
-                                                    ->placeholder('N/A')
-                                                    ->money('IDR', locale: 'id'),
-
-                                                TextEntry::make('request_total')
-                                                    ->label('Total Request')
-                                                    ->placeholder('N/A')
-                                                    ->money('IDR', locale: 'id')
-                                                    ->weight(FontWeight::Bold),
-
-                                                TextEntry::make('actual_total')
-                                                    ->label('Total Aktual')
-                                                    ->placeholder('N/A')
-                                                    ->money('IDR', locale: 'id')
+                                                // COA Header with Name and Code
+                                                TextEntry::make('coa_name')
+                                                    ->label('COA')
+                                                    ->hidden()
+                                                    // ->state(fn (array $state): string => ($state['coa_name'] ?? 'N/A').' ('.($state['coa_code'] ?? 'N/A').')')
+                                                    ->size(TextSize::Large)
                                                     ->weight(FontWeight::Bold)
-                                                    ->color('primary'),
+                                                    ->color('primary')
+                                                    ->icon('heroicon-o-tag')
+                                                    ->iconPosition(IconPosition::Before),
 
-                                                TextEntry::make('variance')
-                                                    ->label('Selisih')
-                                                    ->placeholder('N/A')
-                                                    ->money('IDR', locale: 'id')
-                                                    ->weight(FontWeight::Bold)
-                                                    ->color(fn ($state) => $state > 0 ? 'success' : ($state < 0 ? 'danger' : 'gray')),
+                                                // Financial Summary for this COA
+                                                KeyValueEntry::make('summary')
+                                                    ->extraAttributes([
+                                                        'class' => '**:font-sans!',
+                                                    ])
+                                                    ->label('Ringkasan Keuangan COA')
+                                                    ->keyLabel('Kategori')
+                                                    ->valueLabel('Nominal')
+                                                    ->columnSpanFull(),
 
-                                                TextEntry::make('status')
-                                                    ->label('Status')
-                                                    ->placeholder('N/A')
-                                                    ->badge(),
+                                                // Detailed Items Breakdown - TABLE FORMAT
+                                                RepeatableEntry::make('items')
+                                                    ->label('Detail Item')
+                                                    ->hiddenLabel()
+                                                    ->contained(false)
+                                                    ->extraAttributes([
+                                                        'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
+                                                    ])
+                                                    ->table([
+                                                        TableColumn::make('Type')->width('100px'),
+                                                        TableColumn::make('Deskripsi')->width('300px'),
+                                                        TableColumn::make('Qty Request')->width('110px'),
+                                                        TableColumn::make('Qty Aktual')->width('110px'),
+                                                        TableColumn::make('Unit')->width('125px'),
+                                                        TableColumn::make('Harga Request')->width('250px'),
+                                                        TableColumn::make('Harga Aktual')->width('250px'),
+                                                        TableColumn::make('Total Request')->width('250px'),
+                                                        TableColumn::make('Total Aktual')->width('250px'),
+                                                        TableColumn::make('Selisih')->width('250px'),
+                                                        TableColumn::make('Status')->width('200px'),
+                                                    ])
+                                                    ->schema([
+                                                        TextEntry::make('type')
+                                                            ->label('Type')
+                                                            ->badge()
+                                                            ->color(fn ($state) => match ($state) {
+                                                                'realized' => 'success',
+                                                                'cancelled' => 'gray',
+                                                                'new_unplanned' => 'warning',
+                                                                'offset' => 'info',
+                                                                default => 'primary',
+                                                            })
+                                                            ->formatStateUsing(fn ($state) => match ($state) {
+                                                                'realized' => 'Terealisasi',
+                                                                'cancelled' => 'Dibatalkan',
+                                                                'new_unplanned' => 'Item Baru',
+                                                                'offset' => 'Offset',
+                                                                default => ucfirst($state ?? 'unknown'),
+                                                            }),
+
+                                                        TextEntry::make('description')
+                                                            ->label('Deskripsi')
+                                                            ->wrap()
+                                                            ->lineClamp(3),
+
+                                                        TextEntry::make('request_quantity')
+                                                            ->label('Qty Request')
+                                                            ->placeholder('N/A')
+                                                            ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
+
+                                                        TextEntry::make('actual_quantity')
+                                                            ->label('Qty Aktual')
+                                                            ->placeholder('N/A')
+                                                            ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
+
+                                                        TextEntry::make('unit')
+                                                            ->label('Unit')
+                                                            ->placeholder('N/A'),
+
+                                                        TextEntry::make('request_price')
+                                                            ->label('Harga Request')
+                                                            ->placeholder('N/A')
+                                                            ->money('IDR', locale: 'id'),
+
+                                                        TextEntry::make('actual_price')
+                                                            ->label('Harga Aktual')
+                                                            ->placeholder('N/A')
+                                                            ->money('IDR', locale: 'id'),
+
+                                                        TextEntry::make('request_total')
+                                                            ->label('Total Request')
+                                                            ->placeholder('N/A')
+                                                            ->money('IDR', locale: 'id')
+                                                            ->weight(FontWeight::Bold),
+
+                                                        TextEntry::make('actual_total')
+                                                            ->label('Total Aktual')
+                                                            ->placeholder('N/A')
+                                                            ->money('IDR', locale: 'id')
+                                                            ->weight(FontWeight::Bold)
+                                                            ->color('primary'),
+
+                                                        TextEntry::make('variance')
+                                                            ->label('Selisih')
+                                                            ->placeholder('N/A')
+                                                            ->money('IDR', locale: 'id')
+                                                            ->weight(FontWeight::Bold)
+                                                            ->color(fn ($state) => $state > 0 ? 'success' : ($state < 0 ? 'danger' : 'gray')),
+
+                                                        TextEntry::make('status')
+                                                            ->label('Status')
+                                                            ->placeholder('N/A')
+                                                            ->badge(),
+                                                    ]),
                                             ]),
                                     ])
-                                    ->contained(true),
+                                    ->contained(false),
                             ]),
 
                         // // TAB 2: SETTLEMENT RECEIPTS
@@ -454,106 +465,68 @@ class SettlementInfolist
                                     ]),
                             ]),
 
-                        // // TAB 3: GENERATED DPR (if exists)
-                        Tab::make('DPR yang Dihasilkan')
+                        // // TAB 3: GENERATED DPR HISTORY (if exists)
+                        Tab::make('Riwayat DPR')
                             ->icon('heroicon-o-document-duplicate')
-                            ->visible(fn ($record) => $record->generated_payment_request_id !== null)
+                            ->visible(fn (Settlement $record) => $record->generatedPaymentRequests()->exists())
                             ->schema([
-                                Section::make('Informasi DPR')
-                                    ->description('Settlement ini menghasilkan DPR untuk item yang memerlukan approval (offset, reimbursement, item baru)')
-                                    ->icon('heroicon-o-information-circle')
-                                    ->iconColor('info')
-                                    ->schema([
-                                        Grid::make(4)
-                                            ->schema([
-                                                TextEntry::make('generatedPaymentRequest.request_number')
-                                                    ->label('Nomor DPR')
-                                                    ->badge()
-                                                    ->color('primary')
-                                                    ->size(TextSize::Large)
-                                                    ->weight(FontWeight::Bold)
-                                                    ->url(fn ($record) => $record->generatedPaymentRequest
-                                                        ? DailyPaymentRequestResource::getUrl('view', ['record' => $record->generated_payment_request_id])
-                                                        : null
-                                                    )
-                                                    ->openUrlInNewTab(),
-
-                                                TextEntry::make('generatedPaymentRequest.status')
-                                                    ->label('Status DPR')
-                                                    ->badge()
-                                                    ->size(TextSize::Large),
-
-                                                TextEntry::make('generatedPaymentRequest.request_date')
-                                                    ->label('Tanggal DPR')
-                                                    ->date('d F Y'),
-
-                                                TextEntry::make('generatedPaymentRequest.total_request_amount')
-                                                    ->label('Total Nominal DPR')
-                                                    ->money('IDR', locale: 'id')
-                                                    ->size(TextSize::Large)
-                                                    ->weight(FontWeight::Bold),
-                                            ]),
-                                    ])
-                                    ->columnSpanFull(),
-
-                                // DPR Items Table
-                                RepeatableEntry::make('generatedPaymentRequest.requestItems')
-                                    ->label('Item DPR')
+                                RepeatableEntry::make('generatedPaymentRequests')
+                                    ->label('Riwayat DPR')
                                     ->columnSpanFull()
-                                    ->hiddenLabel()
                                     ->contained(false)
-                                    ->extraAttributes([
-                                        'class' => 'overflow-x-auto p-0.5 pb-1.5 *:first:table-fixed *:first:[&_thead]:[&_th]:first:w-[46px] *:first:table-fixed *:first:[&_thead]:[&_th]:last:w-[46px]',
-                                    ])
-                                    ->table([
-                                        TableColumn::make('Tipe')->width('120px'),
-                                        TableColumn::make('COA')->width('250px'),
-                                        TableColumn::make('Deskripsi')->width('300px'),
-                                        TableColumn::make('Qty')->width('100px'),
-                                        TableColumn::make('Unit')->width('150px'),
-                                        TableColumn::make('Harga')->width('250px'),
-                                        TableColumn::make('Total')->width('250px'),
-                                        TableColumn::make('Status')->width('150px'),
-                                    ])
                                     ->schema([
-                                        TextEntry::make('payment_type')
-                                            ->label('Tipe')
-                                            ->badge()
-                                            ->color(fn ($state) => match ($state?->value) {
-                                                'offset' => 'info',
-                                                'reimburse' => 'success',
-                                                default => 'primary',
-                                            }),
+                                        Section::make()
+                                            ->schema([
+                                                Grid::make(4)
+                                                    ->schema([
+                                                        TextEntry::make('request_number')
+                                                            ->label('Nomor DPR')
+                                                            ->badge()
+                                                            ->color('primary')
+                                                            ->size(TextSize::Large)
+                                                            ->weight(FontWeight::Bold)
+                                                            ->url(fn ($record) => DailyPaymentRequestResource::getUrl('view', ['record' => $record->id]))
+                                                            ->openUrlInNewTab(),
 
-                                        TextEntry::make('coa.name')
-                                            ->label('COA')
-                                            ->badge()
-                                            ->color('primary'),
+                                                        TextEntry::make('status')
+                                                            ->label('Status DPR')
+                                                            ->badge()
+                                                            ->size(TextSize::Large)
+                                                            ->color(fn ($state) => match ($state?->value) {
+                                                                'approved' => 'success',
+                                                                'rejected' => 'danger',
+                                                                'pending' => 'warning',
+                                                                default => 'gray',
+                                                            }),
 
-                                        TextEntry::make('description')
-                                            ->label('Deskripsi')
-                                            ->wrap()
-                                            ->lineClamp(2),
+                                                        TextEntry::make('created_at')
+                                                            ->label('Tanggal Dibuat')
+                                                            ->dateTime('d M Y H:i', 'Asia/Jakarta'),
 
-                                        TextEntry::make('act_quantity')
-                                            ->label('Qty')
-                                            ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
+                                                        TextEntry::make('total_request_amount')
+                                                            ->label('Total Nominal')
+                                                            ->money('IDR', locale: 'id')
+                                                            ->size(TextSize::Large)
+                                                            ->weight(FontWeight::Bold),
+                                                    ]),
 
-                                        TextEntry::make('unit_quantity')
-                                            ->label('Unit'),
+                                                // Show rejection notes if rejected
+                                                TextEntry::make('approvalHistories')
+                                                    ->label('Alasan Ditolak')
+                                                    ->visible(fn ($record) => $record->status?->value === 'rejected')
+                                                    ->formatStateUsing(function ($state) {
+                                                        return $state->notes ? $state->approver->user->name.' : '.$state->notes : null;
+                                                        // $rejection = $record->approvalHistories()
+                                                        //     ->where('action', \App\Enums\ApprovalAction::Rejected)
+                                                        //     ->first();
 
-                                        TextEntry::make('act_amount_per_item')
-                                            ->label('Harga')
-                                            ->money('IDR', locale: 'id'),
-
-                                        TextEntry::make('total_act_amount')
-                                            ->label('Total')
-                                            ->money('IDR', locale: 'id')
-                                            ->weight(FontWeight::Bold),
-
-                                        TextEntry::make('status')
-                                            ->label('Status')
-                                            ->badge(),
+                                                        // return $rejection?->notes ?? 'Tidak ada alasan';
+                                                    })
+                                                    ->color('danger')
+                                                    ->badge()
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->collapsible(),
                                     ]),
                             ]),
 
@@ -587,6 +560,8 @@ class SettlementInfolist
                                                             return 'Menunggu Konfirmasi FO';
                                                         } elseif ($record->status === SettlementStatus::WaitingRefund) {
                                                             return 'Menunggu Bukti Transfer';
+                                                        } elseif ($record->status === SettlementStatus::WaitingDPRApproval) {
+                                                            return 'Menunggu Persetujuan Selesai';
                                                         }
 
                                                         return 'Tidak Perlu Pengembalian';

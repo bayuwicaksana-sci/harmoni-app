@@ -93,9 +93,25 @@ class SettlementItemProcessingService
             throw new Exception('Item Request tidak ditemukan');
         }
 
+        // Fix #9 (Approach B): Check if item is linked to a rejected DPR
+        // If so, create a duplicate for the new DPR to preserve audit trail
+        if ($originalRequestItem->daily_payment_request_id !== null) {
+            $existingDPR = $originalRequestItem->dailyPaymentRequest;
+            if ($existingDPR && $existingDPR->status === \App\Enums\DPRStatus::Rejected) {
+                // Create a duplicate for the new DPR
+                $originalRequestItem = $originalRequestItem->replicate();
+                $originalRequestItem->daily_payment_request_id = null; // Will be set by new DPR
+            }
+        }
+
         // Link to settlement and settlement receipt
         $originalRequestItem->settlement_id = $settlement->id;
         $originalRequestItem->settlement_receipt_id = $settlementReceipt->id;
+
+        // Fix #8: Reset status if item was in WaitingSettlementReview from previous rejection
+        if ($originalRequestItem->status === RequestItemStatus::WaitingSettlementReview) {
+            $originalRequestItem->status = RequestItemStatus::WaitingSettlement;
+        }
 
         $requestTotalPrice = $originalRequestItem->quantity * $originalRequestItem->amount_per_item;
 

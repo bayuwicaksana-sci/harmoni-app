@@ -256,7 +256,7 @@ class ProgramActivityItemsImport implements OnEachRow
             $activityCode = $this->activityIndex[$activityName] ?? null;
 
             // TEMPORARY DEBUG - Remove after testing
-            if (!$activityCode) {
+            if (! $activityCode) {
                 Log::info('Activity not found', [
                     'looking_for' => $activityName,
                     'available_activities' => array_keys($this->activityIndex),
@@ -280,17 +280,17 @@ class ProgramActivityItemsImport implements OnEachRow
     }
 }
 
-[
-    [
-        "code" => 'DMF-2025-penanaman-pohon',
-        "program-name" => 'Penanaman Pohon',
-        "activity" => [
-            'code' => 'DMF-2025-penanaman-pohon-pengadaan-bibit',
-            'act-name' => 'Pengadaan Bibit',
-            'item' => [
-                'item-name' => 'Alpukat',
-                'price' => 1000000
-            ]
-        ]
-    ]
-]
+// [
+//     [
+//         "code" => 'DMF-2025-penanaman-pohon',
+//         "program-name" => 'Penanaman Pohon',
+//         "activity" => [
+//             'code' => 'DMF-2025-penanaman-pohon-pengadaan-bibit',
+//             'act-name' => 'Pengadaan Bibit',
+//             'item' => [
+//                 'item-name' => 'Alpukat',
+//                 'price' => 1000000
+//             ]
+//         ]
+//     ]
+// ]

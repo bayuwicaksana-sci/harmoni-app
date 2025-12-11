@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Settlements\Pages;
 
+use App\Enums\DPRStatus;
 use App\Enums\SettlementStatus;
 use App\Filament\Resources\Settlements\SettlementResource;
 use Filament\Actions\Action;
@@ -53,9 +54,34 @@ class ViewSettlement extends ViewRecord
                         ->success()
                         ->send();
                 })
-                ->visible(fn () => $this->record->status === SettlementStatus::WaitingRefund
-                    && $this->record->submitter_id === Auth::user()->employee?->id
-                ),
+                ->visible(function () {
+                    $settlement = $this->record;
+
+                    $needRefund = $settlement->calculateRefundAmount() > 0;
+
+                    return $needRefund && ! $settlement->hasPendingDPR() && $settlement->status === SettlementStatus::WaitingRefund && $settlement->submitter_id === Auth::user()->employee->id;
+
+                    // // Must be in WaitingRefund status and user must be submitter
+                    // if ($settlement->status !== SettlementStatus::WaitingRefund
+                    //     || $settlement->submitter_id !== Auth::user()->employee?->id) {
+                    //     return false;
+                    // }
+
+                    // // Check if settlement currently requires DPR based on its items
+                    // $requiresDpr = app(\App\Services\SettlementDPRService::class)->requiresDPR($settlement);
+
+                    // // If doesn't require DPR, can upload refund receipt
+                    // if (! $requiresDpr) {
+                    //     return true;
+                    // }
+
+                    // // If requires DPR, must have an approved DPR that was created AFTER the settlement's last update
+                    // $latestDpr = $settlement->latestGeneratedDPR();
+
+                    // return $latestDpr !== null
+                    //     && $latestDpr->status === DPRStatus::Approved
+                    //     && $latestDpr->created_at >= $settlement->updated_at;
+                }),
             Action::make('confirmRefund')
                 ->label('Konfirmasi Pengembalian Dana')
                 ->icon('heroicon-o-check-circle')
@@ -135,7 +161,8 @@ class ViewSettlement extends ViewRecord
                 })
                 ->visible(fn () => $this->record->status === SettlementStatus::WaitingConfirmation
                     && Auth::user()->employee?->jobTitle?->code === 'FO'
-                    && $this->record->generated_payment_request_id === null
+                    && ! $this->record->hasPendingDPR()  // Can request revision if no pending DPR
+                    && ! $this->record->hasApprovedDPR()
                 ),
             EditAction::make()
                 ->label(fn () => $this->record->revision_notes

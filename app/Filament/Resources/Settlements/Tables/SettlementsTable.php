@@ -16,42 +16,19 @@ class SettlementsTable
         return $table
             ->columns([
                 TextColumn::make('settlement_number')
+                    ->label('Nomor Settlement')
+                    ->badge()
                     ->searchable(),
-                TextColumn::make('submitter.id')
+                TextColumn::make('submitter.user.name')
+                    ->label('Submitter')
                     ->searchable(),
-                TextColumn::make('refund_amount')
-                    ->numeric()
-                    ->sortable(),
                 TextColumn::make('submit_date')
-                    ->dateTime()
+                    ->label('Tanggal Submit')
+                    ->dateTime(format: 'd M Y H:i', timezone: 'Asia/Jakarta')
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
                     ->searchable(),
-                TextColumn::make('previous_status')
-                    ->searchable(),
-                TextColumn::make('generatedPaymentRequest.id')
-                    ->searchable(),
-                TextColumn::make('refund_confirmed_by')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('refund_confirmed_at')
-                    ->dateTime()
-                    ->sortable(),
-                TextColumn::make('confirmed_by')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('confirmed_at')
-                    ->dateTime()
-                    ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //

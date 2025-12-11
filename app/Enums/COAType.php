@@ -5,7 +5,7 @@ namespace App\Enums;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
-enum COAType: string implements HasLabel, HasColor
+enum COAType: string implements HasColor, HasLabel
 {
     // case Asset = 'asset';
     // case Liability = 'liability';
@@ -29,7 +29,7 @@ enum COAType: string implements HasLabel, HasColor
         return match ($this) {
             // self::Asset => 'Aset',
             // self::Liability => 'Liabilitas',
-            self::NonProgram => 'warning',
+            self::NonProgram => 'info',
             self::Program => 'success',
             // self::Revenue => 'Pendapatan',
         };

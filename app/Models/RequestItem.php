@@ -211,7 +211,7 @@ class RequestItem extends Model implements HasMedia
                     return null;
                 }
 
-                return ($this->payment_type === RequestPaymentType::Advance ? ($this->total_act_amount > 0 ? $this->total_act_amount : $this->total_amount) : $this->total_act_amount) * $this->tax->value;
+                return ($this->payment_type === RequestPaymentType::Advance ? $this->total_amount : $this->total_act_amount) * $this->tax->value;
             },
         );
     }
@@ -251,9 +251,9 @@ class RequestItem extends Model implements HasMedia
         return new Attribute(
             get: function () {
                 // Handle null values
-                if (! $this->is_taxed || is_null($this->tax_id) || is_null($this->tax_method)) {
-                    return null;
-                }
+                // if (! $this->is_taxed || is_null($this->tax_id) || is_null($this->tax_method)) {
+                //     return null;
+                // }
 
                 $transferAmount = 0;
 
@@ -261,9 +261,9 @@ class RequestItem extends Model implements HasMedia
                     $transferAmount += $this->payment_type === RequestPaymentType::Advance ? $this->total_amount : $this->total_act_amount;
                 } else {
                     if ($this->payment_type === RequestPaymentType::Advance) {
-                        $transferAmount += $this->total_amount - ($this->total_amount * $this->tax->value);
+                        $transferAmount += $this->total_amount - ($this->tax_amount ?? 0);
                     } else {
-                        $transferAmount += $this->total_act_amount - ($this->total_act_amount * $this->tax->value);
+                        $transferAmount += $this->total_act_amount - ($this->tax_amount ?? 0);
                     }
                 }
 

@@ -71,7 +71,7 @@ abstract class DailyPaymentRequestMail extends Mailable
             ->map(fn ($history) => [
                 'approver' => $history->approver->user->name.' ('.$history->approver->jobTitle->title.')',
                 'action' => $history->action->getLabel(),
-                'date' => $history->approved_at?->format('d M Y, H:i'),
+                'date' => $history->approved_at?->timezone('Asia/Jakarta')->format('d M Y, H:i'),
                 'notes' => $history->notes,
             ])->toArray();
     }

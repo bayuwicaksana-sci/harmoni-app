@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Settlements\Schemas;
 
-use EditSettlementForm;
+use App\Filament\Resources\Settlements\Schemas\Components\EditSettlementForm;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Schema;
@@ -19,35 +19,35 @@ class SettlementForm
     public static function formFields(): array
     {
         return [
-            Fieldset::make('Ringkasan Financial')
-                ->columnSpanFull()
-                ->columns(4)
-                ->schema([
-                    TextInput::make('approved_request_amount')
-                        ->label('Pengeluaran yang Disetujui')
-                        ->prefix('Rp')
-                        ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
-                        ->readOnly()
-                        ->dehydrated(false),
-                    TextInput::make('cancelled_amount')
-                        ->label('Nominal yang Dibatalkan')
-                        ->prefix('Rp')
-                        ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
-                        ->readOnly()
-                        ->dehydrated(false),
-                    TextInput::make('spent_amount')
-                        ->label('Nominal yang Dibelanjakan')
-                        ->prefix('Rp')
-                        ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
-                        ->readOnly()
-                        ->dehydrated(false),
-                    TextInput::make('variance')
-                        ->label('Selisih Nominal')
-                        ->prefix('Rp')
-                        ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
-                        ->readOnly()
-                        ->dehydrated(false),
-                ]),
+            // Fieldset::make('Ringkasan Financial')
+            //     ->columnSpanFull()
+            //     ->columns(4)
+            //     ->schema([
+            //         TextInput::make('approved_request_amount')
+            //             ->label('Pengeluaran yang Disetujui')
+            //             ->prefix('Rp')
+            //             ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
+            //             ->readOnly()
+            //             ->dehydrated(false),
+            //         TextInput::make('cancelled_amount')
+            //             ->label('Nominal yang Dibatalkan')
+            //             ->prefix('Rp')
+            //             ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
+            //             ->readOnly()
+            //             ->dehydrated(false),
+            //         TextInput::make('spent_amount')
+            //             ->label('Nominal yang Dibelanjakan')
+            //             ->prefix('Rp')
+            //             ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
+            //             ->readOnly()
+            //             ->dehydrated(false),
+            //         TextInput::make('variance')
+            //             ->label('Selisih Nominal')
+            //             ->prefix('Rp')
+            //             ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
+            //             ->readOnly()
+            //             ->dehydrated(false),
+            //     ]),
             EditSettlementForm::make(),
         ];
     }

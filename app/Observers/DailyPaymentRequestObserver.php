@@ -2,11 +2,13 @@
 
 namespace App\Observers;
 
-use App\Services\SettlementNotificationService;
+use App\Enums\ApprovalAction;
 use App\Enums\DPRStatus;
 use App\Enums\SettlementStatus;
 use App\Models\DailyPaymentRequest;
 use App\Models\Settlement;
+use App\Services\SettlementNotificationService;
+use Illuminate\Support\Facades\DB;
 
 class DailyPaymentRequestObserver
 {
@@ -23,38 +25,47 @@ class DailyPaymentRequestObserver
      */
     public function updated(DailyPaymentRequest $dailyPaymentRequest): void
     {
-        // Check if status changed to Approved
-        if ($dailyPaymentRequest->wasChanged('status') && $dailyPaymentRequest->status === DPRStatus::Approved) {
-            // Find related Settlement waiting for this DPR approval
-            $settlement = Settlement::where('generated_payment_request_id', $dailyPaymentRequest->id)
-                ->where('status', SettlementStatus::WaitingDPRApproval)
-                ->first();
+        // Wrap in transaction (Fix #6)
+        DB::transaction(function () use ($dailyPaymentRequest) {
+            // Check if status changed to Approved
+            if ($dailyPaymentRequest->wasChanged('status') && $dailyPaymentRequest->status === DPRStatus::Approved) {
+                // Find related Settlement waiting for this DPR approval (Fix #3 - use new relationship)
+                $settlement = $dailyPaymentRequest->settlement()
+                    ->where('status', SettlementStatus::WaitingDPRApproval)
+                    ->first();
 
-            if ($settlement) {
-                // Auto-approve settlement now that DPR is approved
-                $settlement->approve();
+                if ($settlement) {
+                    // Auto-approve settlement now that DPR is approved
+                    $settlement->approve();
+                }
             }
-        }
 
-        // Check if status changed to Rejected
-        if ($dailyPaymentRequest->wasChanged('status') && $dailyPaymentRequest->status === DPRStatus::Rejected) {
-            $settlement = Settlement::where('generated_payment_request_id', $dailyPaymentRequest->id)
-                ->where('status', SettlementStatus::WaitingDPRApproval)
-                ->first();
+            // Check if status changed to Rejected
+            if ($dailyPaymentRequest->wasChanged('status') && $dailyPaymentRequest->status === DPRStatus::Rejected) {
+                // Find related Settlement (Fix #3 - use new relationship)
+                $settlement = $dailyPaymentRequest->settlement()
+                    ->where('status', SettlementStatus::WaitingDPRApproval)
+                    ->first();
 
-            if ($settlement) {
-                // Route back to Draft for revision
-                $settlement->update([
-                    'status' => SettlementStatus::Draft,
-                    'previous_status' => SettlementStatus::WaitingDPRApproval,
-                    'revision_notes' => 'DPR ditolak: '.($dailyPaymentRequest->rejection_reason ?? 'Tidak ada alasan'),
-                ]);
+                if ($settlement) {
+                    // Fix #2: Safe navigation to prevent NULL pointer
+                    $rejectionNotes = $dailyPaymentRequest->approvalHistories()
+                        ->where('action', ApprovalAction::Rejected)
+                        ->first()?->notes ?? 'Tidak ada alasan';
 
-                // Notify submitter
-                app(SettlementNotificationService::class)
-                    ->notifySubmitterOfRevision($settlement);
+                    // Route back to Draft for revision
+                    $settlement->update([
+                        'status' => SettlementStatus::Rejected,
+                        'previous_status' => SettlementStatus::WaitingDPRApproval,
+                        'revision_notes' => 'DPR ditolak: '.$rejectionNotes,
+                    ]);
+
+                    // Notify submitter
+                    app(SettlementNotificationService::class)
+                        ->notifySubmitterOfRevision($settlement);
+                }
             }
-        }
+        });
     }
 
     /**

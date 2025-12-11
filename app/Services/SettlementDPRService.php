@@ -19,7 +19,13 @@ class SettlementDPRService
      */
     public function requiresDPR(Settlement $settlement): bool
     {
+        // Fix #5: Exclude rejected, closed, and cancelled items
         return $settlement->settlementItems()
+            ->whereNotIn('status', [
+                RequestItemStatus::Rejected,
+                RequestItemStatus::Closed,
+                RequestItemStatus::Cancelled,
+            ])
             ->where(function ($query) {
                 $query->where('is_unplanned', true)
                     ->orWhere('payment_type', RequestPaymentType::Offset)
@@ -73,6 +79,8 @@ class SettlementDPRService
                 'request_date' => $settlement->submit_date ?? now(),
                 'status' => DPRStatus::Pending,
                 'requester_id' => $settlement->submitter_id,
+                // Fix #4: Set settlement_id on DPR instead of generated_payment_request_id on Settlement
+                'settlement_id' => $settlement->id,
             ]);
 
             // Link items to DPR
@@ -83,9 +91,8 @@ class SettlementDPRService
             // Submit through approval workflow
             app(ApprovalService::class)->submitRequest($dpr);
 
-            // Update settlement
+            // Update settlement status
             $settlement->update([
-                'generated_payment_request_id' => $dpr->id,
                 'status' => SettlementStatus::WaitingDPRApproval,
             ]);
 

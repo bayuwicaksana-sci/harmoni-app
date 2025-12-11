@@ -46,8 +46,13 @@
                 </div>
                 <div class="summary-item">
                     <span class="summary-label">Waktu Keputusan</span>
-                    <span
-                        class="summary-value">{{ $approvalHistory->approved_at->timezone('Asia/Jakarta')->format('d M Y, H:i') }}</span>
+                    <span class="summary-value">
+                        @if ($actionResult === 'approved')
+                            {{ $approvalHistory->approved_at->timezone('Asia/Jakarta')->format('d M Y, H:i') }}
+                        @else
+                            {{ $approvalHistory->rejected_at->timezone('Asia/Jakarta')->format('d M Y, H:i') }}
+                        @endif
+                    </span>
                 </div>
             </div>
 

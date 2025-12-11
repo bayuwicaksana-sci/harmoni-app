@@ -31,9 +31,26 @@ class ListDailyPaymentRequests extends ListRecords
                 if (Auth::user()->employee->jobTitle->jobLevel->level === 5 || Auth::user()->employee->jobTitle->department->code === 'FIN') {
                     $query->whereNot('status', DPRStatus::Draft);
                 } else {
-                    $query->where('status', DPRStatus::Pending)->where('requester_id', Auth::user()->employee->id);
+                    $query->where('requester_id', Auth::user()->employee->id);
                 }
-            }),
+            })
+                ->badge(function () {
+                    if (Auth::user()->employee->jobTitle->jobLevel->level === 5 || Auth::user()->employee->jobTitle->department->code === 'FIN') {
+                        return DailyPaymentRequest::whereNot('status', DPRStatus::Draft)->count();
+                    } else {
+                        return DailyPaymentRequest::whereNot('status', DPRStatus::Draft)->where('requester_id', Auth::user()->employee->id)->count();
+                    }
+                })
+                ->visible(fn () => Auth::user()->employee->jobTitle->jobLevel->level === 5 || Auth::user()->employee->jobTitle->department->code === 'FIN'),
+
+            'my_requests' => Tab::make('Request Saya')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('requester_id', Auth::user()?->employee?->id))
+                ->badge(function () {
+
+                    $count = DailyPaymentRequest::where('requester_id', Auth::user()->employee->id)->count();
+
+                    return $count > 0 ? $count : null;
+                }),
 
             'require_approval' => Tab::make('Permintaan Approval')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', DPRStatus::Pending)->whereNot('requester_id', Auth::user()?->employee?->id)
@@ -61,9 +78,6 @@ class ListDailyPaymentRequests extends ListRecords
                 })->count())
                 ->badgeColor('info'),
 
-            'my_requests' => Tab::make('Request Saya')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('requester_id', Auth::user()?->employee?->id)),
-
             'draft' => Tab::make('Draft')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', DPRStatus::Draft)->where('requester_id', Auth::user()?->employee?->id))
                 ->badge(fn () => DailyPaymentRequest::where('status', DPRStatus::Draft)->where('requester_id', Auth::user()?->employee?->id)->count()),
@@ -83,5 +97,10 @@ class ListDailyPaymentRequests extends ListRecords
                 ->badge(fn () => DailyPaymentRequest::where('status', DPRStatus::Rejected)->where('requester_id', Auth::user()?->employee?->id)->count())
                 ->badgeColor('danger'),
         ];
+    }
+
+    public function getDefaultActiveTab(): string|int|null
+    {
+        return 'my_requests';
     }
 }

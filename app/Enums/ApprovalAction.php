@@ -5,12 +5,13 @@ namespace App\Enums;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
-enum ApprovalAction: string implements HasLabel, HasColor
+enum ApprovalAction: string implements HasColor, HasLabel
 {
     case Pending = 'pending';
     case Approved = 'approved';
     case Rejected = 'rejected';
     case Revised = 'revised';
+    case Cancelled = 'cancelled';
 
     public function getLabel(): ?string
     {
@@ -19,6 +20,7 @@ enum ApprovalAction: string implements HasLabel, HasColor
             self::Approved => 'Disetujui',
             self::Rejected => 'Ditolak',
             self::Revised => 'Direvisi',
+            self::Cancelled => 'Dibatalkan'
         };
     }
 
@@ -29,6 +31,7 @@ enum ApprovalAction: string implements HasLabel, HasColor
             self::Approved => 'success',
             self::Rejected => 'danger',
             self::Revised => 'warning',
+            self::Cancelled => 'grey'
         };
     }
 }

@@ -23,6 +23,7 @@ class DailyPaymentRequest extends Model implements HasMedia
         'request_number',
         'requester_id',
         'request_date',
+        'settlement_id',
         // 'total_amount',
         // 'bank_name',
         // 'bank_account_number',
@@ -124,6 +125,11 @@ class DailyPaymentRequest extends Model implements HasMedia
     public function audits(): HasMany
     {
         return $this->hasMany(PaymentRequestAudit::class);
+    }
+
+    public function settlement(): BelongsTo
+    {
+        return $this->belongsTo(Settlement::class, 'settlement_id');
     }
 
     protected function totalRequestAmount(): Attribute

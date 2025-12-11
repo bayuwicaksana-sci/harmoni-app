@@ -791,6 +791,8 @@ class ListClients extends ListRecords
                                     $result['programs'][] = $program;
                                 }
 
+                                // dd($result);
+
                                 return $result;
                             })
                             ->steps([
@@ -1058,8 +1060,11 @@ class ListClients extends ListRecords
                                                                     JS),
                                                                 TextInput::make('contract_unit_price')
                                                                     ->label('Harga Satuan (Kontrak)')
-                                                                    ->numeric()
+                                                                    ->inputMode('decimal')
                                                                     ->prefix('Rp', true)
+                                                                    ->afterStateHydrated(function (TextInput $component, string $state) {
+                                                                        $component->state(number_format((float) $state, 2, ',', '.'));
+                                                                    })
                                                                     ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
                                                                     ->dehydrateStateUsing(fn ($rawState) => (float) str_replace(['.', ','], ['', '.'], $rawState))
                                                                     ->stripCharacters(['.', ','])
@@ -1079,17 +1084,23 @@ class ListClients extends ListRecords
                                                                     JS),
                                                                 TextInput::make('contract_total_price')
                                                                     ->label('Harga Total (Kontrak)')
-                                                                    ->numeric()
+                                                                    ->inputMode('decimal')
                                                                     ->readOnly()
                                                                     ->prefix('Rp', true)
+                                                                    ->afterStateHydrated(function (TextInput $component, string $state) {
+                                                                        $component->state(number_format((float) $state, 2, ',', '.'));
+                                                                    })
                                                                     ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
                                                                     ->dehydrateStateUsing(fn ($rawState) => (float) str_replace(['.', ','], ['', '.'], $rawState))
                                                                     ->stripCharacters(['.', ','])
                                                                     ->minValue(1),
                                                                 TextInput::make('planned_unit_price')
                                                                     ->label('Harga Satuan (Planned)')
-                                                                    ->numeric()
+                                                                    ->inputMode('decimal')
                                                                     ->prefix('Rp', true)
+                                                                    ->afterStateHydrated(function (TextInput $component, string $state) {
+                                                                        $component->state(number_format((float) $state, 2, ',', '.'));
+                                                                    })
                                                                     ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
                                                                     ->dehydrateStateUsing(fn ($rawState) => (float) str_replace(['.', ','], ['', '.'], $rawState))
                                                                     ->stripCharacters(['.', ','])
@@ -1110,9 +1121,12 @@ class ListClients extends ListRecords
                                                                     JS),
                                                                 TextInput::make('planned_total_price')
                                                                     ->label('Harga Total (Kontrak)')
-                                                                    ->numeric()
+                                                                    ->inputMode('decimal')
                                                                     ->readOnly()
                                                                     ->prefix('Rp', true)
+                                                                    ->afterStateHydrated(function (TextInput $component, string $state) {
+                                                                        $component->state(number_format((float) $state, 2, ',', '.'));
+                                                                    })
                                                                     ->mask(RawJs::make('$money($input, \',\', \'.\', 2)'))
                                                                     ->dehydrateStateUsing(fn ($rawState) => (float) str_replace(['.', ','], ['', '.'], $rawState))
                                                                     ->stripCharacters(['.', ','])
@@ -1407,6 +1421,7 @@ class ListClients extends ListRecords
                                 //     ]),
                             ])
                             ->action(function (array $data) {
+                                // dd($data);
                                 try {
                                     DB::transaction(function () use ($data) {
                                         $createdClient = Client::create([

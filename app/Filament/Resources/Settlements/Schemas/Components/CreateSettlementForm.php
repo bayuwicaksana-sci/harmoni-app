@@ -1,5 +1,7 @@
 <?php
 
+namespace App\Filament\Resources\Settlements\Schemas\Components;
+
 use App\Enums\RequestItemStatus;
 use App\Filament\Resources\Settlements\Pages\CreateSettlement;
 use App\Models\Coa;
@@ -319,7 +321,7 @@ class CreateSettlementForm
                             ->label('COA')
                             ->disabled(fn (Get $get) => $get('id') !== 'new')
                             ->dehydrated(fn (Get $get) => $get('id') === 'new')
-                            ->options(Coa::query()->pluck('name', 'id'))
+                            ->options(Coa::query()->active()->pluck('name', 'id'))
                             ->native(true)
                             ->live(),
                         // ->afterStateUpdatedJs(

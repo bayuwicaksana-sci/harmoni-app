@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('request_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('daily_payment_request_id')->constrained('daily_payment_requests')->onDelete('cascade');
+            $table->foreignId('daily_payment_request_id')->nullable()->constrained('daily_payment_requests')->onDelete('cascade');
             $table->foreignId('coa_id')->nullable()->constrained('coas')->nullOnDelete();
             $table->foreignId('program_activity_id')->nullable()->constrained('program_activities')->nullOnDelete();
             $table->foreignId('program_activity_item_id')->nullable()->constrained('program_activity_items')->nullOnDelete();
